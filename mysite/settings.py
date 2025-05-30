@@ -190,22 +190,3 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.AllowAny'
     ]
 }
-
-
-SITE_ID = 1  # Ensure SITE_ID is defined
-
-# DJ-Rest-Auth configurations
-REST_USE_JWT = True  # Optional: Use JWT tokens for authentication
-
-# Authentication backends
-AUTHENTICATION_BACKENDS = [
-    'django.contrib.auth.backends.ModelBackend',
-    'allauth.account.auth_backends.AuthenticationBackend',  # Allauth backend
-]
-
-# Define your REST Framework configuration
-REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': (
-        'dj_rest_auth.jwt_auth.JWTCookieAuthentication',
-    ),
-}
