@@ -19,6 +19,7 @@ from datetime import datetime
 class EmployeeList1(AsyncWebsocketConsumer):
     async def connect(self):
         await self.accept()
+        
 
     async def receive(self, text_data):
         request_data = json.loads(text_data)
@@ -26,11 +27,16 @@ class EmployeeList1(AsyncWebsocketConsumer):
 
         try:
             employee = await self.get_employee(employee_mail)
+            self.emp_id=employee.employee_id
             org_id, org_name = await self.get_org_details(employee)
+            self.orgn_name = org_name
             serializer = EmployeeSerializers(employee)
-            employee_data = serializer.data
+            self.employee_data = serializer.data
             other_employees = await self.get_other_employee(org_id, employee.id)
+            self.other_employee = other_employees
             notifications = await sync_to_async(self.get_unread_notifications_count)(employee.employee_id)
+            self.notify = notifications
+            self.periodic_task = asyncio.create_task(self.send_periodic_notifications())
             employees_list = await self.prepare_employee_list(
                 current_employee_id=employee.employee_id,
                 employees=other_employees,
@@ -40,7 +46,7 @@ class EmployeeList1(AsyncWebsocketConsumer):
 
             await self.send(text_data=json.dumps({
                 "Status": "Success",
-                "Data": employee_data,
+                "Data": self.employee_data,
                 "message": "Login Successful",
                 "Org_Employees": {
                     "count_type": "unread_count",
@@ -57,6 +63,29 @@ class EmployeeList1(AsyncWebsocketConsumer):
                 "Status": "Error",
                 "message": "Employee not found"
             }))
+
+
+    async def send_periodic_notifications(self):
+        while True:
+            await self.send_notifications_update()
+            await asyncio.sleep(1)
+
+    async def send_notifications_update(self):
+        unread_count = await sync_to_async(self.get_unread_notifications_count)(self.emp_id)
+        sorted_employee_list_view = await self.prepare_employee_list(self.emp_id, self.other_employee, self.orgn_name, self.notify)
+
+        await self.send(text_data=json.dumps({
+            "Data": self.employee_data,
+            "Org_Employees":{'count_type': 'unread_count',
+            'chat_receiver': unread_count['receiver'],
+            'count': unread_count['unread_count'],
+            "unread_sender_count": unread_count['unread_sender'],
+            'unread_messages': unread_count['unread_messages'],
+            'employee_list': sorted_employee_list_view}
+            
+        }, ensure_ascii=False))
+
+
 
     @database_sync_to_async
     def get_employee(self, employee_mail):
@@ -112,6 +141,7 @@ class EmployeeList1(AsyncWebsocketConsumer):
                             except:
                                 pass
                         latest_msg = decrypted
+                        notifications = sync_to_async(self.get_unread_notifications_count)(self.emp_id)
 
                         unread_info = unread_by_sender.get(emp.employee_id, {"unread_count_sender": 0, "messages": []})
                         

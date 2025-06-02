@@ -16,4 +16,3 @@ class Superadmin(models.Model):
         return self.name
 
 
-

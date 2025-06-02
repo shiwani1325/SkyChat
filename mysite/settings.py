@@ -1,4 +1,5 @@
 from pathlib import Path
+from datetime import timedelta
 import os
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -6,6 +7,7 @@ SECRET_KEY = 'django-insecure-9+kq9z%z99i=1*7fs921674v-cz%c-qwgi8j72tpb9-%*%aw_1
 DEBUG = True
 
 ALLOWED_HOSTS = ['*','192.168.1.45', '143.110.242.217']
+
 
 INSTALLED_APPS = [
     'daphne',
@@ -16,12 +18,14 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'rest_framework_simplejwt',
     'channels',
     'chat',
     'superadmin',
     'org',
     'employee',
-    'corsheaders'
+    'corsheaders',
+    'custom',
 ]
 
 MIDDLEWARE = [
@@ -65,6 +69,8 @@ CHANNEL_LAYERS = {
 }
 
 CORS_ALLOW_ALL_ORIGINS = True
+
+AUTH_USER_MODEL = 'custom.CustomUser'
 
 
 # Database
@@ -113,6 +119,9 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = 'static/'
+
+MEDIA_URL = '/images/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'images')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
@@ -189,4 +198,9 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.AllowAny'
     ]
+}
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
 }

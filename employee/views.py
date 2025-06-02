@@ -2,11 +2,14 @@ from django.shortcuts import render
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from django.contrib.auth import authenticate
+from rest_framework_simplejwt.tokens import RefreshToken
 import requests
 from .models import Employee
 from .serializers import EmployeeSerializers
 from rest_framework.permissions import AllowAny
 from org.models import Organisation
+
 
 
 class EmployeeList(APIView):
