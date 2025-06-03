@@ -25,7 +25,6 @@ INSTALLED_APPS = [
     'org',
     'employee',
     'corsheaders',
-    'custom',
 ]
 
 MIDDLEWARE = [
@@ -70,7 +69,7 @@ CHANNEL_LAYERS = {
 
 CORS_ALLOW_ALL_ORIGINS = True
 
-AUTH_USER_MODEL = 'custom.CustomUser'
+# AUTH_USER_MODEL = 'custom.CustomUser'
 
 
 # Database
@@ -120,8 +119,9 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
-MEDIA_URL = '/images/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'images')
+MEDIA_URL = '/mediafiles/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'mediafiles')
+
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
