@@ -5,25 +5,58 @@ from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth.hashers import check_password
 from .models import Superadmin
+from custom.utils import get_tokens_for_user
 from .serializers import SuperadminSerializers
+from django.contrib.auth import authenticate
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from custom.models import User
+from custom.serializers import UserSerializer
+from org.models import Organisation
+from org.serializers import OrganisationSerializers
+from custom.permissions import IsOrganisation, IsSuperAdmin
 
 
 class Superadminview(APIView):
+    permission_classes = [AllowAny]
     def get(self, request, id=None):
-        if id:
-            data = Superadmin.objects.get(id=id)
-            serializer = SuperadminSerializers(data)
-            return Response({"status":"success", "data":serializer.data}, status=status.HTTP_200_OK)
+        try:
+            if id:
+                data = Superadmin.objects.get(id=id)
+                serializer = SuperadminSerializers(data)
+                return Response({"status":"success", "data":serializer.data}, status=status.HTTP_200_OK)
 
-        else:
-            return Response({"status":"Error", "Message":"Provide ID"}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                data= Superadmin.objects.all()
+                serializer =SuperadminSerializers(data, many=True)
+
+                return Response({"status":"success", "data":serializer.data}, status=status.HTTP_200_OK)
+        except Superadmin.DoesNotExist:
+            return Response({"status":"Error", "message":"Super admin not found"}, status=status.HTTP_400_BAD_REQUEST)
 
 
     def post(self, request):
-        serializer_data= SuperadminSerializers(data = request.data)
-        if serializer_data.is_valid():
-            serializer_data.save()
-            return Response({"status":"success","data":serializer_data.data}, status=status.HTTP_201_CREATED)
+        try:
+            role = request.data.get('role')
+
+            if role not in ['superadmin', 'organisation','employee']:
+                return Response({'error':"Invalid role"}, status=status.HTTP_400_BAD_REQUEST)
+
+            userserializers = UserSerializer(data= request.data)
+
+            if userserializers.is_valid():
+                user= userserializers.save()
+            else:
+                return Response({'user_errors':userserializers.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+            serializer_data= SuperadminSerializers(data = request.data)
+            if serializer_data.is_valid():
+                serializer_data.save(user=user)
+                return Response({"status":"success","data":serializer_data.data}, status=status.HTTP_201_CREATED)
+
+            else:
+                return Response({'errors': serializer_data.errors}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({'status':"error", "message":str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
     def delete(self, request, id =None):
@@ -39,25 +72,30 @@ class Superadminview(APIView):
 
 
 class SuperadminLoginView(APIView):
+    permission_classes = [AllowAny]
+   
     def post(self, request):
         email = request.data.get('email')
         password = request.data.get('password')
+        user = authenticate(request, email=email, password=password)
+        if user is None:
+            return Response({'error': 'Invalid credentials'}, status=401)
 
-        if not email or not password:
-            return Response({'status': 'error', 'message': 'Email and password required'}, status=status.HTTP_400_BAD_REQUEST)
+        tokens = get_tokens_for_user(user, user.role)
+        return Response({
+            'tokens': tokens,
+            'user': UserSerializer(user).data
+        })
 
+
+class SuperadminViewOrg(APIView):
+    permission_classes = [IsAuthenticated, IsSuperAdmin]
+
+    def get(self, request):
         try:
-            user = Superadmin.objects.get(email=email)
+            data = Organisation.objects.all()
+            serializer= OrganisationSerializers(data, many=True)
+            return Response({"status":"Success","data":serializer.data}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'status':"error", "message":str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-            if check_password(password, user.password):  # Assuming password is hashed
-                refresh = RefreshToken.for_user(user)
-                return Response({
-                    'status': 'success',
-                    'refresh': str(refresh),
-                    'access': str(refresh.access_token),
-                }, status=status.HTTP_200_OK)
-            else:
-                return Response({'status': 'error', 'message': 'Invalid password'}, status=status.HTTP_401_UNAUTHORIZED)
-
-        except Superadmin.DoesNotExist:
-            return Response({'status': 'error', 'message': 'Superadmin not found'}, status=status.HTTP_404_NOT_FOUND)

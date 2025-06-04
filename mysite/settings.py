@@ -25,6 +25,7 @@ INSTALLED_APPS = [
     'org',
     'employee',
     'corsheaders',
+    'custom',
 ]
 
 MIDDLEWARE = [
@@ -69,7 +70,7 @@ CHANNEL_LAYERS = {
 
 CORS_ALLOW_ALL_ORIGINS = True
 
-# AUTH_USER_MODEL = 'custom.CustomUser'
+AUTH_USER_MODEL = 'custom.User'
 
 
 # Database
@@ -86,7 +87,7 @@ CORS_ALLOW_ALL_ORIGINS = True
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'skylabs_chat',
+        'NAME': 'skylabschat',
         'USER': 'skylabs',
         'PASSWORD': '140806',
         'HOST': '143.110.242.217',
@@ -199,6 +200,17 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.AllowAny'
     ]
 }
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    )
+}
+
+
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),

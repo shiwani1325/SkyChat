@@ -8,6 +8,7 @@ from django.db.models import F
 import base64
 from django.conf import settings
 from collections import defaultdict
+from rest_framework.permissions import AllowAny
 from django.db.models import Q
 from django.db.models import F, Func, Value, JSONField
 from django.db import transaction
@@ -16,8 +17,9 @@ from django.utils import timezone
 from .models import EmployeeChat, ERp_backup
 
 
-class chathistory(APIView):
 
+class chathistory(APIView):
+    permission_classes =[AllowAny]
     def load_key(self):
         key_file_path = os.path.join(settings.BASE_DIR, 'Encryption_Key.key')
         if os.path.exists(key_file_path):

@@ -2,12 +2,11 @@
 import os
 import django
 
-# Step 1: Setup Django environment
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "mysite.settings")  # Replace 'mysite' with your actual project name
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "mysite.settings")
 django.setup()
 
 import requests
-from employee.models import Employee  # Replace with your actual app name
+from employee.models import Employee
 from org.models import Organisation
 from django.utils import timezone
 
@@ -17,8 +16,6 @@ response = requests.get(url)
 if response.status_code == 200:
     data = response.json()
     employees = data.get("latest_employee_chats", [])
-
-    # Create a map of OrgCode to Organisation instance
     org_map = {org.OrgCode: org for org in Organisation.objects.all() if org.OrgCode}
 
     for emp in employees:
@@ -28,8 +25,7 @@ if response.status_code == 200:
         if not emp_id or not emp_info:
             print(f"⛔ Skipped due to missing employee_id or employee_data")
             continue
-
-        # Extract prefix from employee_id (e.g. 'SSIPL' from 'SSIPL0158')
+            
         prefix = ''.join(filter(str.isalpha, emp_id))
         matched_org = org_map.get(prefix)
 
