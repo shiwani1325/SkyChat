@@ -9,11 +9,10 @@ from django.db.models import Q
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 from employee.models import Employee
-from .utils import generate_and_save_key, load_keys
+from .utils import generate_and_save_key, load_keys, add_active_user, remove_active_user, get_user_room
+
 
 class EmployeeChat(AsyncWebsocketConsumer):
-    ACTIVE_USERS = {}
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.key = None
@@ -25,18 +24,19 @@ class EmployeeChat(AsyncWebsocketConsumer):
         self.sender_id = self.scope['url_route']['kwargs']['sender_id']
         self.receiver_id = self.scope['url_route']['kwargs']['receiver_id']
         self.emp_room_group_name = f'emp_room_{min(self.sender_id, self.receiver_id)}_{max(self.sender_id, self.receiver_id)}'
-        self.__class__.ACTIVE_USERS[self.sender_id] = self.emp_room_group_name
 
+        await add_active_user(self.sender_id, self.emp_room_group_name)
         await self.channel_layer.group_add(self.emp_room_group_name, self.channel_name)
         await self.accept()
 
-        if (self.sender_id in self.__class__.ACTIVE_USERS and
-            self.receiver_id in self.__class__.ACTIVE_USERS and
-            self.__class__.ACTIVE_USERS[self.receiver_id] == self.emp_room_group_name):
+        receiver_room = await get_user_room(self.receiver_id)
+        # print(f"Receiver room from Redis: {receiver_room}")
+        # print(f"Current emp_room_group_name: {self.emp_room_group_name}")
+        if receiver_room == self.emp_room_group_name:
             await self.mark_all_messages_read(self.receiver_id, self.sender_id)
 
     async def disconnect(self, close_code):
-        self.__class__.ACTIVE_USERS.pop(self.sender_id, None)
+        await remove_active_user(self.sender_id)
         await self.channel_layer.group_discard(self.emp_room_group_name, self.channel_name)
 
     async def mark_all_messages_read(self, receiver_id, sender_id):
@@ -46,8 +46,8 @@ class EmployeeChat(AsyncWebsocketConsumer):
                 Q(sender__employee_id=sender_id, receiver__employee_id=receiver_id) |
                 Q(sender__employee_id=receiver_id, receiver__employee_id=sender_id)
             ))
-            updated_messages = []
 
+            updated_messages = []
             for chat in chats:
                 modified = False
                 for msg in chat.messages:
@@ -56,7 +56,7 @@ class EmployeeChat(AsyncWebsocketConsumer):
                         updated_messages.append(msg)
                         modified = True
                 if modified:
-                    chat.messages = chat.messages
+                    await database_sync_to_async(setattr)(chat, "messages", chat.messages)
                     await database_sync_to_async(chat.save)(update_fields=["messages"])
 
             if updated_messages:
@@ -65,7 +65,7 @@ class EmployeeChat(AsyncWebsocketConsumer):
                     {'type': "updating_existing_message", "updated_messages": updated_messages}
                 )
         except Exception as e:
-            print(f"Error: {e}")
+            print(f"Error in mark_all_messages_read: {e}")
 
     async def updating_existing_message(self, event):
         for msg in event["updated_messages"]:
@@ -73,7 +73,8 @@ class EmployeeChat(AsyncWebsocketConsumer):
 
     async def update_message_in_cache(self, updated_msg):
         keys = load_keys()
-        if not keys: return
+        if not keys:
+            return
 
         self.key = keys[-1]
         cipher_suite = Fernet(self.key)
@@ -101,32 +102,52 @@ class EmployeeChat(AsyncWebsocketConsumer):
         cipher_suite = Fernet(self.key)
         encrypted_content = cipher_suite.encrypt(message_content.encode()).decode() if message_content else None
 
-        # Save all files in parallel
         files_info = await asyncio.gather(*(self.save_uploaded_file(f, sender_id) for f in media_files))
 
-        # Get sender and receiver objects in parallel
         sender_obj, sender_name = await self.get_employee_and_name(sender_id)
+        message_id = str(uuid.uuid4())
+
+        preview_message = {
+            'type': 'chat_message',
+            'sender': sender_id,
+            'receiver': receiver_ids[0] if receiver_ids else "",
+            'sender_name': sender_name,
+            'receiver_name': "",
+            'content': message_content,
+            'file': media_files,
+            'message_id': message_id,
+            'status': 'sending',
+            'Activity': 'Sending...',
+            'message_type': message_type
+        }
+        await self.send(text_data=json.dumps(preview_message, ensure_ascii=False))
 
         async def process_receiver(receiver_id):
-            receiver_obj, receiver_name = await self.get_employee_and_name(receiver_id)
-            message_id = str(uuid.uuid4())
-            read = self.__class__.ACTIVE_USERS.get(receiver_id) == self.emp_room_group_name
+            try:
+                receiver_obj, receiver_name = await self.get_employee_and_name(receiver_id)
+                receiver_room = await get_user_room(receiver_id)
+                # print(f"Receiver {receiver_id} active in room: {receiver_room}, current room: {self.emp_room_group_name}")
+                read = receiver_room == self.emp_room_group_name
+                # print(f"Read status for receiver {receiver_id}: {read}")
+                # read = receiver_room == self.emp_room_group_name
 
-            message_data = await self.save_chat_message(
-                sender_id, receiver_id,
-                sender_name, receiver_name,
-                encrypted_content, files_info, message_id, "sent", read,
-                message_type, replied_to, forwarded_content
-            )
+                message_data = await self.save_chat_message(
+                    sender_id, receiver_id,
+                    sender_name, receiver_name,
+                    encrypted_content, files_info, message_id, "sent", read,
+                    message_type, replied_to, forwarded_content
+                )
 
-            await self.channel_layer.group_send(
-                self.emp_room_group_name,
-                {
-                    **message_data,
-                    'type': 'chat_message',
-                    'Activity': "Online" if read else "Offline"
-                }
-            )
+                await self.channel_layer.group_send(
+                    self.emp_room_group_name,
+                    {
+                        **message_data,
+                        'type': 'chat_message',
+                        'Activity': "Online" if read else "Offline"
+                    }
+                )
+            except Exception as e:
+                print(f"[Receiver Processing Error]: {e}")
 
         await asyncio.gather(*(process_receiver(rid) for rid in receiver_ids))
 
@@ -138,8 +159,8 @@ class EmployeeChat(AsyncWebsocketConsumer):
         self.key = keys[-1]
         cipher_suite = Fernet(self.key)
         decrypted_content = cipher_suite.decrypt(event['content'].encode()).decode() if event['content'] else None
-
         event['content'] = decrypted_content
+
         await self.send(text_data=json.dumps(event, ensure_ascii=False))
 
     @database_sync_to_async
@@ -198,6 +219,10 @@ class EmployeeChat(AsyncWebsocketConsumer):
             with open(file_path, 'wb') as f:
                 f.write(base64.b64decode(b64_data))
 
-            return {"file_url": f"mediafiles/files/{filename}", "file_name": filename, "file_uuid": str(uuid.uuid4())}
+            return {
+                "file_url": f"mediafiles/files/{filename}",
+                "file_name": filename,
+                "file_uuid": str(uuid.uuid4())
+            }
         except Exception as e:
             return {"error": str(e)}

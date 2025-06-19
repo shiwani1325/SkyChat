@@ -1,9 +1,8 @@
 from django.urls import path
-from .views import org_view, Org_login, OrgViewEmp
+from .views import CreateOrgWithUserView
 
 urlpatterns=[
-    path('company/', org_view.as_view()),
-    path('company/<int:id>', org_view.as_view()),
-    path('login/', Org_login.as_view()),
-    path('orgemp/', OrgViewEmp.as_view()),
+    path('register/', CreateOrgWithUserView.as_view()),
+    path('org/<int:id>', CreateOrgWithUserView.as_view()),
+    path('org/', CreateOrgWithUserView.as_view()),
 ]

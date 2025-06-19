@@ -1,12 +1,13 @@
 from django.conf import settings
 from django.conf.urls.static import static
 from django.urls import path
-from .views import EmployeeList, EmployeeLogin
+from .views import CreateEmployeeWithUserView, EditEmployeeWithUserView
 
 urlpatterns=[
-    path('employeelist/',EmployeeList.as_view()),
-    path('employeelist/<int:id>',EmployeeList.as_view()),
-    path('emplogin/', EmployeeLogin.as_view()),
+    path('register/', CreateEmployeeWithUserView.as_view()),
+    path('employeelist/',CreateEmployeeWithUserView.as_view()),
+    path('employeelist/<int:id>',CreateEmployeeWithUserView.as_view()),
+    path('edit/emp/<int:id>', EditEmployeeWithUserView.as_view()),
 
 ]
 

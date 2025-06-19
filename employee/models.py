@@ -1,33 +1,47 @@
 from django.db import models
-from org.models import Organisation
-from custom.models import User
+from dept.models import OrgDepartment, OrgDesignation
+from django.conf import settings
+from django.utils import timezone
 
-class Employee(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE, limit_choices_to={'role': 'employee'}, null=True,blank=True)
-    organisation = models.ForeignKey(User, on_delete=models.CASCADE, related_name='employees', limit_choices_to={'role': 'organisation'},null=True,blank=True)
-    employee_id = models.CharField(max_length=20, unique=True, null=True, blank=True)
-    image = models.ImageField(upload_to='images/', null=True, blank=True)
-    status = models.CharField(max_length=100, null=True, blank=True)
-    mob_number = models.CharField(max_length=20, null=True, blank=True, unique=True)
-    department = models.CharField(max_length=100, null=True, blank=True)
-    designation = models.CharField(max_length=100, null=True, blank=True)
-    date_of_joining = models.DateField(max_length = 20, null=True, blank=True)
-    date_of_resign = models.DateField(max_length=20, null=True, blank=True)
-    date_of_birth = models.DateField(null=True, blank=True)
-    gender = models.CharField(max_length=50, null=True, blank=True)
-    nationality = models.CharField(max_length=50, null=True, blank=True)
-    address = models.CharField(max_length=100, null=True, blank=True)
-    father_name = models.CharField(max_length=100, null=True, blank=True)
-    mother_name = models.CharField(max_length=100, null=True, blank=True)
-    parent_contact = models.CharField(max_length=20, null=True, blank=True)
-    employment_type = models.CharField(max_length=100, null=True, blank=True)
-    work_location = models.CharField(max_length=100, null=True, blank=True)
-    reporting_manager = models.CharField(max_length=100, null=True, blank=True)
 
+def profile_image_upload_path(instance, filename):
+    ext = filename.split('.')[-1]
+    filename = f"{uuid.uuid4()}.{ext}"
+    return os.path.join('employee_profiles/', filename)
+
+class TMEmployeeDetail(models.Model):
+    GENDER_CHOICES = [
+        ('male', 'Male'),
+        ('female', 'Female'),
+        ('other', 'Other'),
+    ]
+
+    STATUS_CHOICES = [
+        ('active', 'Active'),
+        ('inactive', 'Inactive'),
+    ]
+
+    EmployeeName = models.CharField(max_length=255)
+    EmployeeId = models.CharField(max_length=50, unique=True)  
+    EmpMobNumber = models.CharField(max_length=20, unique=True)
+    DepartmentId = models.ForeignKey(OrgDepartment, on_delete=models.SET_NULL, null=True)
+    DesignationId = models.ForeignKey(OrgDesignation, on_delete=models.SET_NULL, null=True)
+    ProfileImage = models.ImageField(upload_to=profile_image_upload_path, null=True, blank=True)
+    DateOfJoining = models.DateField()
+    Status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
+    DateOfBirth = models.DateField()
+    Gender = models.CharField(max_length=10, choices=GENDER_CHOICES)
+    Address = models.TextField()
+    WorkLocation = models.CharField(max_length=255)
+    CreatedOn = models.DateTimeField(auto_now_add=True)
+    CreatedBy = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='emp_created')
+    UpdatedOn = models.DateTimeField(auto_now=True)
+    UpdatedBy = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='emp_updated')
 
     class Meta:
-        db_table = 'Employee'
-
+        db_table = 'TMEmployeeDetail'
 
     def __str__(self):
-        return f"{self.user.name}-{self.employee_id}"
+        return f"{self.EmployeeName} ({self.EmployeeId})"
+
+    

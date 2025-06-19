@@ -65,7 +65,7 @@ class EmployeeChat(models.Model):
 
 
     def __str__(self):
-        return f'Message in {self.sender.name} - {self.receiver.name}'
+        return f'Message in {self.sender} - {self.receiver}'
 
 
 class ERp_backup(models.Model):

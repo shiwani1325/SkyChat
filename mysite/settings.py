@@ -6,11 +6,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-9+kq9z%z99i=1*7fs921674v-cz%c-qwgi8j72tpb9-%*%aw_1'
 DEBUG = True
 
-ALLOWED_HOSTS = ['*','192.168.1.45', '143.110.242.217']
+ALLOWED_HOSTS = ['*','192.168.0.236', '143.110.242.217']
 
 
 INSTALLED_APPS = [
     'daphne',
+    # 'uvicorn',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -20,12 +21,13 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'channels',
-    'chat',
+    # 'chat',
     'superadmin',
     'org',
     'employee',
     'corsheaders',
     'custom',
+    'dept',
 ]
 
 MIDDLEWARE = [
@@ -60,13 +62,15 @@ WSGI_APPLICATION = 'mysite.wsgi.application'
 ASGI_APPLICATION = 'mysite.asgi.application'
 
 CHANNEL_LAYERS = {
-    'default' : {
-        'BACKEND' : 'channels_redis.core.RedisChannelLayer',
-        'CONFIG' : {
-            'hosts' : [('127.0.0.1',6379)],
-        }
-    }
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("127.0.0.1", 6379)],
+            "capacity": 1000,  
+        },
+    },
 }
+
 
 CORS_ALLOW_ALL_ORIGINS = True
 
@@ -76,24 +80,24 @@ AUTH_USER_MODEL = 'custom.User'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': BASE_DIR / 'db.sqlite3',
-#     }
-# }
-
-
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'skylabschat',
-        'USER': 'skylabs',
-        'PASSWORD': '140806',
-        'HOST': '143.110.242.217',
-        'PORT': '5432',
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
+
+
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql_psycopg2',
+#         'NAME': 'skylabschat',    #skylabsnewchat
+#         'USER': 'skylabs',
+#         'PASSWORD': '140806',
+#         'HOST': '143.110.242.217',
+#         'PORT': '5432',
+#     }
+# }
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -201,6 +205,8 @@ REST_FRAMEWORK = {
     ]
 }
 
+
+# me
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
@@ -213,6 +219,6 @@ REST_FRAMEWORK = {
 
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
 }
