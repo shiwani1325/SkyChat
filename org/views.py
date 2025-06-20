@@ -45,13 +45,32 @@ class CreateOrgWithUserView(APIView):
         try:
             if id:
                 data = TMOrganisationDetail.objects.get(id=id)
+                if request.user.is_authenticated:
+                    data.UpdatedBy=request.user
+
+                if data.Status == 'inactive':
+                    data.Status = 'active'
+                else:
+                    data.Status = 'inactive'
+                
+                data.save()
+                return Response({"status":"success","message":"Particular org data get deleted"}, status=status.HTTP_200_OK)
                
         except TMOrganisationDetail.DoesNotExist:
             return Response({'status':"error", "message":"Organisation not found with this Id"}, status=status.HTTP_404_NOT_FOUND)
-    
-        if request.user.is_authenticated:
-            data.UpdatedBy=request.user
 
-        data.Status = 'inactive'
-        data.save()
-        return Response({"status":"success","message":"Particular org data get deleted"}, status=status.HTTP_200_OK)
+    
+    def put(self, request, id=None):
+        try:
+            if id:
+                data = TMOrganisationDetail.objects.get(id=id)
+                serializer = OrganisationSerializer(data, data= request.data)
+                if serializer.is_valid():
+                    if request.user.is_authenticated:
+                        data.UpdatedBy = request.user
+                    serializer.save()
+
+                return Response({'status':"success","data":serializer.data}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'status':"error", "message":str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
