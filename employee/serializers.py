@@ -39,7 +39,7 @@ class UserWithEmployeeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['email', 'password', 'role', 'admin']
+        fields = ['email', 'password', 'role', 'org_id']
 
 
     def to_internal_value(self, data):
@@ -56,7 +56,7 @@ class UserWithEmployeeSerializer(serializers.ModelSerializer):
         emp_serializer = EmployeeSerializers(data=self.employee_data)
         emp_serializer.is_valid(raise_exception=True)
         employee = emp_serializer.save()
-        user = User.objects.create(user=employee, **validated_data)
+        user = User.objects.create(emp_id=employee, **validated_data)
         user.set_password(password)
         user.save()
         return user

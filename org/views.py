@@ -74,3 +74,31 @@ class CreateOrgWithUserView(APIView):
         except Exception as e:
             return Response({'status':"error", "message":str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
+
+    def patch(self, request, id=None):
+        try:
+            if id:
+                data = TMOrganisationDetail.objects.get(id=id)
+                serializer = OrganisationSerializer(data, data=request.data, partial=True)
+                if serializer.is_valid():
+                    if request.user.is_authenticated:
+                        data.UpdatedBy = request.user
+                    serializer.save()
+                return Response({'status':"success","data":serializer.data}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'status':"error", "message":str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+
+
+# class CheckOrgDuplicateFieldAPIView(APIView):
+#     permission_classes = [AllowAny]
+#     allowed_fields ={
+#         'email':'email',
+#         'OrgName':'OrgName',
+#         'OrgCode':'OrgCode',
+#         'OrgMobNum':'OrgMobNum',
+#     }
+
+#     def get(self, request):

@@ -108,3 +108,36 @@ class EditEmployeeWithUserView(APIView):
         except Exception as e:
             return Response({'status':"error","message":str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
+
+
+
+class CheckEmpDuplicateFieldAPIView(APIView):
+    permission_classes=[AllowAny]
+    allowed_fields={
+        'email':'email',
+        'EmployeeId':'EmployeeId',
+        'EmpMobNumber':'EmpMobNumber'
+    }
+
+    def get(self, request):
+        item = request.query_params.get('item')
+        value = request.query_params.get('value')
+
+        if not item and not value:
+            return Response({'status':"Error","message":"Both item and value field are required"})
+        
+        if item not in self.allowed_fields:
+            return Response({"status":"error","message":"Invalid field"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if item == 'email':
+            data_exists = User.objects.filter(email=value).exists()
+        
+        elif item == 'EmployeeId':
+            data_exists = TMEmployeeDetail.objects.filter(EmployeeId = value).exists()
+        elif item =='EmpMobNumber':
+            data_exists = TMEmployeeDetail.objects.filter(EmpMobNumber=value).exists()
+        return Response({'status':"success","data":data_exists}, status=status.HTTP_200_OK)
+
+
+
+        
