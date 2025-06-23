@@ -37,7 +37,7 @@ class UserWithOrganisationSerializer(serializers.ModelSerializer):
         org_serializer = OrganisationSerializer(data = self.org_data)
         org_serializer.is_valid(raise_exception=True)
         org = org_serializer.save()
-        user = User.objects.create(admin=org, **validated_data)
+        user = User.objects.create(org_id=org, **validated_data)
         user.set_password(password)
         user.save()
         return user

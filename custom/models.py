@@ -42,8 +42,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(unique=True)
     role = models.ForeignKey(TMRole, on_delete=models.SET_NULL, null=True)
 
-    admin = models.ForeignKey(TMOrganisationDetail, on_delete=models.SET_NULL, null=True, blank=True)
-    user = models.ForeignKey(TMEmployeeDetail, on_delete=models.SET_NULL, null=True, blank=True)
+    org_id = models.ForeignKey(TMOrganisationDetail, on_delete=models.SET_NULL, null=True, blank=True)
+    emp_id = models.ForeignKey(TMEmployeeDetail, on_delete=models.SET_NULL, null=True, blank=True)
 
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)

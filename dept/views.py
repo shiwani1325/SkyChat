@@ -2,13 +2,14 @@ from django.shortcuts import render
 from rest_framework.views import APIView
 from rest_framework import status
 from rest_framework.permissions import AllowAny
+from custom.permissions import IsOrganisation
 from rest_framework.response import Response
 from .models import OrgDepartment, OrgDesignation
 from .serializers import OrgDepartmentSerializers, OrgDesignationSerializers
 
 
 class DepartmentView(APIView):
-    permission_classes=[AllowAny]
+    permission_classes=[IsOrganisation]
     def get(self, request,id=None):
         try:
             if id:
@@ -26,7 +27,7 @@ class DepartmentView(APIView):
 
 
 class DesignationView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsOrganisation]
 
     def get(self, request, id=None):
         try:
@@ -44,7 +45,7 @@ class DesignationView(APIView):
 
 
 class DesignationListViewDept(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsOrganisation]
 
     def get(self, request, id=None):
         try:

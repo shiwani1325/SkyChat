@@ -95,3 +95,8 @@
 # n=int(input("enter any number:"))
 # a= n*(n+1)//2
 # print(a)
+
+
+
+# n= "Hello!"
+# print(n[-1:])
