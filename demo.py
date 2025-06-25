@@ -100,3 +100,84 @@
 
 # n= "Hello!"
 # print(n[-1:])
+
+
+
+import json
+
+input_data = '{"name": "Shiwani"}'
+data = json.loads(input_data)
+
+
+if 'name' in data:
+    name = data['name']
+    message = f"Hello, {name}! Welcome to the API!"
+    response = {'message': message}
+else:
+    response = {'error': 'Please provide a name'}
+
+print(json.dumps(response, indent=4))
+
+
+
+# import json
+
+# # In-memory task list
+# tasks = []
+# task_id_counter = 1
+
+# # Simulate API requests
+# def handle_request(method, input_json=None):
+#     global task_id_counter, tasks
+
+#     if method == 'POST':
+#         data = json.loads(input_json)
+#         if 'task' not in data:
+#             response = {'error': 'Task description is required'}
+#         else:
+#             task = {
+#                 'id': task_id_counter,
+#                 'task': data['task']
+#             }
+#             tasks.append(task)
+#             task_id_counter += 1
+#             response = {'message': 'Task added successfully', 'task': task}
+
+#     elif method == 'GET':
+#         response = {'tasks': tasks}
+
+#     elif method == 'DELETE':
+#         data = json.loads(input_json)
+#         task_id = data.get('id')
+#         if not task_id:
+#             response = {'error': 'Task id is required to delete'}
+#         else:
+#             original_length = len(tasks)
+#             tasks = [t for t in tasks if t['id'] != task_id]
+#             if len(tasks) < original_length:
+#                 response = {'message': f'Task with id {task_id} deleted successfully'}
+#             else:
+#                 response = {'error': f'No task found with id {task_id}'}
+
+#     else:
+#         response = {'error': 'Unsupported HTTP method'}
+
+#     print(json.dumps(response, indent=4))
+
+
+# # ---------------------------
+# # Simulating API calls below:
+# # ---------------------------
+
+# # 1️⃣ Add a task (POST)
+# handle_request('POST', '{"task": "Buy groceries"}')
+# # handle_request('POST', '{"task": "Finish Python project"}')
+
+# # # 2️⃣ Get all tasks (GET)
+# # handle_request('GET')
+
+# # # 3️⃣ Delete a task (DELETE)
+# # handle_request('DELETE', '{"id": 1}')
+
+# # # 4️⃣ Get all tasks again to verify deletion
+# # handle_request('GET')

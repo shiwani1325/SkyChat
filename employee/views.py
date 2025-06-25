@@ -31,16 +31,15 @@ class CreateEmployeeWithUserView(APIView):
     def get(self, request, id=None):
         try:
             if id:
-                data = TMEmployeeDetail.objects.get(id=id)
-                serializer = EmployeeSerializers(data)
-
+                employee = get_object_or_404(TMEmployeeDetail, id=id)
+                serializer = EmployeeSerializers(employee)
+                return Response({"status": "success", "data": serializer.data}, status=status.HTTP_200_OK)
             else:
-                data = TMEmployeeDetail.objects.all()
-                serializer = EmployeeSerializers(data, many=True)
-            return Response({"status":"success","data":serializer.data}, status =status.HTTP_200_OK)
-    
+                employees = TMEmployeeDetail.objects.all()
+                serializer = EmployeeSerializers(employees, many=True)
+                return Response({"status": "success", "data": serializer.data}, status=status.HTTP_200_OK)
         except Exception as e:
-            return Response({"status":"Error", "message":str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"status": "Error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             
 
     def delete(self, request, id=None):
@@ -112,7 +111,7 @@ class EditEmployeeWithUserView(APIView):
 
 
 class CheckEmpDuplicateFieldAPIView(APIView):
-    permission_classes=[AllowAny]
+    permission_classes=[IsOrganisation]
     allowed_fields={
         'email':'email',
         'EmployeeId':'EmployeeId',
@@ -122,6 +121,7 @@ class CheckEmpDuplicateFieldAPIView(APIView):
     def get(self, request):
         item = request.query_params.get('item')
         value = request.query_params.get('value')
+        emp_id = request.query_params.get('emp_id')
 
         if not item and not value:
             return Response({'status':"Error","message":"Both item and value field are required"})
@@ -130,12 +130,23 @@ class CheckEmpDuplicateFieldAPIView(APIView):
             return Response({"status":"error","message":"Invalid field"}, status=status.HTTP_400_BAD_REQUEST)
         
         if item == 'email':
-            data_exists = User.objects.filter(email=value).exists()
-        
+            emp_email = User.objects.filter(email=value)
+            if emp_id:
+                exclude_id = emp_email.exclude(emp_id=emp_id)
+            data_exists = exclude_id.exists()
+
         elif item == 'EmployeeId':
-            data_exists = TMEmployeeDetail.objects.filter(EmployeeId = value).exists()
+            emp_empcode = TMEmployeeDetail.objects.filter(EmployeeId = value)
+            if emp_id:
+                exclude_id = emp_empcode.exclude(id=emp_id)
+            data_exists = exclude_id.exists()
+
         elif item =='EmpMobNumber':
-            data_exists = TMEmployeeDetail.objects.filter(EmpMobNumber=value).exists()
+            emp_mobnum = TMEmployeeDetail.objects.filter(EmpMobNumber=value)
+            if emp_id:
+                exclude_id = emp_mobnum.exclude(id=emp_id)
+            data_exists = exclude_id.exists()
+            
         return Response({'status':"success","data":data_exists}, status=status.HTTP_200_OK)
 
 
