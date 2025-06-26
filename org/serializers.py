@@ -5,10 +5,15 @@ from custom.models import User
 
 
 class OrganisationSerializer(serializers.ModelSerializer):
+    UserEmail  = serializers.SerializerMethodField()
 
     class Meta:
         model = TMOrganisationDetail
         exclude = ['CreatedOn', 'UpdatedOn', 'CreatedBy', 'UpdatedBy']
+        
+    def get_UserEmail(self, obj):
+        user = User.objects.filter(org_id=obj).first()
+        return user.email if user else None
 
 
 
