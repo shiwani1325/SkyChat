@@ -7,11 +7,10 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/superadmin/',include('superadmin.urls')),
     path('api/custom/',include('custom.urls')),
-    # path('api/chat/', include('chat.urls')),
+    path('api/chat/', include('chat.urls')),
     path('api/employee/',include('employee.urls')),
     path('api/org/',include('org.urls')),
     path('api/dept/',include('dept.urls')),
-
 ]
 if settings.DEBUG:
   urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

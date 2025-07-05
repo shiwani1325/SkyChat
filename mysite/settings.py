@@ -11,7 +11,6 @@ ALLOWED_HOSTS = ['*','192.168.0.236', '143.110.242.217']
 
 INSTALLED_APPS = [
     'daphne',
-    # 'uvicorn',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -21,7 +20,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'channels',
-    # 'chat',
+    'chat',
     'superadmin',
     'org',
     'employee',

@@ -81,5 +81,12 @@ class AllLoginView(APIView):
         serializer = OrganisationSerializer(org_data)
         return serializer.data
 
-  
 
+
+class ViewUserData(APIView):
+    permission_classes = [AllowAny]
+    def get(self, request):
+        data = User.objects.all()
+        serializer_data = UserSerializer(data, many=True)
+
+        return Response({'status':"Success","data":serializer_data.data}, status=status.HTTP_200_OK)

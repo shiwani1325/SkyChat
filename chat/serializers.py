@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import EmployeeChat, ERp_backup
+from .models import EmployeeChat
 
 class EmployeeChatSerializer(serializers.ModelSerializer):
     sender = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
@@ -9,7 +9,7 @@ class EmployeeChatSerializer(serializers.ModelSerializer):
     fields = '__all__'
 
 
-class ERp_backupSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ERp_backup
-        fields = '__all__'
+# class ERp_backupSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = ERp_backup
+#         fields = '__all__'

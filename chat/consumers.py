@@ -8,8 +8,16 @@ from django.conf import settings
 from django.db.models import Q
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
-from employee.models import Employee
+from employee.models import TMEmployeeDetail
 from .utils import generate_and_save_key, load_keys, add_active_user, remove_active_user, get_user_room
+
+
+class WebsocketConnectRoom(AsyncWebsocketConsumer):
+    async def connect(self):
+        await self.accept()
+
+    async def disconnect(self, close_code):
+        pass
 
 
 class EmployeeChat(AsyncWebsocketConsumer):
@@ -24,16 +32,18 @@ class EmployeeChat(AsyncWebsocketConsumer):
         self.sender_id = self.scope['url_route']['kwargs']['sender_id']
         self.receiver_id = self.scope['url_route']['kwargs']['receiver_id']
         self.emp_room_group_name = f'emp_room_{min(self.sender_id, self.receiver_id)}_{max(self.sender_id, self.receiver_id)}'
+        print(f"sender id is:{self.sender_id} and receiver id is :{self.receiver_id}")
+        print(f"Room created:{self.emp_room_group_name}")
 
-        await add_active_user(self.sender_id, self.emp_room_group_name)
+        # await add_active_user(self.sender_id, self.emp_room_group_name)
         await self.channel_layer.group_add(self.emp_room_group_name, self.channel_name)
         await self.accept()
 
-        receiver_room = await get_user_room(self.receiver_id)
-        # print(f"Receiver room from Redis: {receiver_room}")
-        # print(f"Current emp_room_group_name: {self.emp_room_group_name}")
-        if receiver_room == self.emp_room_group_name:
-            await self.mark_all_messages_read(self.receiver_id, self.sender_id)
+        # receiver_room = await get_user_room(self.receiver_id)
+        # # print(f"Receiver room from Redis: {receiver_room}")
+        # # print(f"Current emp_room_group_name: {self.emp_room_group_name}")
+        # if receiver_room == self.emp_room_group_name:
+        #     await self.mark_all_messages_read(self.receiver_id, self.sender_id)
 
     async def disconnect(self, close_code):
         await remove_active_user(self.sender_id)
@@ -43,8 +53,8 @@ class EmployeeChat(AsyncWebsocketConsumer):
         from .models import EmployeeChat as EmployeeChatModel
         try:
             chats = await database_sync_to_async(list)(EmployeeChatModel.objects.filter(
-                Q(sender__employee_id=sender_id, receiver__employee_id=receiver_id) |
-                Q(sender__employee_id=receiver_id, receiver__employee_id=sender_id)
+                Q(sender__id=sender_id, receiver__id=receiver_id) |
+                Q(sender__id=receiver_id, receiver__id=sender_id)
             ))
 
             updated_messages = []
@@ -92,6 +102,7 @@ class EmployeeChat(AsyncWebsocketConsumer):
         media_files = data.get('file', [])
         replied_to = data.get('replied_to')
         forwarded_content = data.get('forwarded_content', [])
+        print(f"data receive ;{data}")
 
         generate_and_save_key()
         keys = load_keys()
@@ -101,18 +112,21 @@ class EmployeeChat(AsyncWebsocketConsumer):
         self.key = keys[-1]
         cipher_suite = Fernet(self.key)
         encrypted_content = cipher_suite.encrypt(message_content.encode()).decode() if message_content else None
+        print(f"encrypted content : {encrypted_content}")
 
         files_info = await asyncio.gather(*(self.save_uploaded_file(f, sender_id) for f in media_files))
 
         sender_obj, sender_name = await self.get_employee_and_name(sender_id)
+        print(f"Senderobj:{sender_obj} and {sender_name}")
         message_id = str(uuid.uuid4())
+        print(f"message is :{message_id}")
 
         preview_message = {
             'type': 'chat_message',
             'sender': sender_id,
             'receiver': receiver_ids[0] if receiver_ids else "",
             'sender_name': sender_name,
-            'receiver_name': "",
+            'receiver_name': '',
             'content': message_content,
             'file': media_files,
             'message_id': message_id,
@@ -125,10 +139,11 @@ class EmployeeChat(AsyncWebsocketConsumer):
         async def process_receiver(receiver_id):
             try:
                 receiver_obj, receiver_name = await self.get_employee_and_name(receiver_id)
+                print(f"receiver obj and name :{receiver_obj} and {receiver_name}")
                 receiver_room = await get_user_room(receiver_id)
-                # print(f"Receiver {receiver_id} active in room: {receiver_room}, current room: {self.emp_room_group_name}")
+                print(f"Receiver {receiver_id} active in room: {receiver_room}, current room: {self.emp_room_group_name}")
                 read = receiver_room == self.emp_room_group_name
-                # print(f"Read status for receiver {receiver_id}: {read}")
+                print(f"Read status for receiver {receiver_id}: {read}")
                 # read = receiver_room == self.emp_room_group_name
 
                 message_data = await self.save_chat_message(
@@ -168,15 +183,16 @@ class EmployeeChat(AsyncWebsocketConsumer):
                           content, files_info, message_id, status, read,
                           message_type='message', replied_to=None, forwarded_content=None):
         from .models import EmployeeChat as EmployeeChatModel
-        from employee.models import Employee
+        from employee.models import TMEmployeeDetail
 
         sender, receiver = sorted(
-            [Employee.objects.get(employee_id=sender_id),
-             Employee.objects.get(employee_id=receiver_id)],
-            key=lambda emp: emp.employee_id
+            [TMEmployeeDetail.objects.get(id=sender_id),
+             TMEmployeeDetail.objects.get(id=receiver_id)],
+            key=lambda emp: emp.id
         )
 
         chat_obj, _ = EmployeeChatModel.objects.get_or_create(sender=sender, receiver=receiver)
+        print(f"Chatobj:{chat_obj}")
 
         message = {
             'sender_id': sender_id,
@@ -201,8 +217,8 @@ class EmployeeChat(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def get_employee_and_name(self, employee_id):
-        employee = Employee.objects.select_related('user').get(employee_id=employee_id)
-        return employee, employee.user.name
+        employee = TMEmployeeDetail.objects.get(id=employee_id)
+        return employee, employee.EmployeeName
 
     async def save_uploaded_file(self, file_data, sender_id):
         try:

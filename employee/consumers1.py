@@ -2,10 +2,13 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 from asgiref.sync import sync_to_async  
 import json
-from .models import Employee
+from .models import TMEmployeeDetail
 from chat.models import EmployeeChat
 from chat.serializers import EmployeeChatSerializer
 from .serializers import EmployeeSerializers
+from collections import defaultdict
+from custom.models import User
+from custom.serializers import UserSerializer
 import asyncio
 import os
 import uuid
@@ -19,7 +22,7 @@ from datetime import datetime
 class EmployeeList1(AsyncWebsocketConsumer):
     async def connect(self):
         await self.accept()
-        
+    
 
     async def receive(self, text_data):
         request_data = json.loads(text_data)
@@ -27,178 +30,133 @@ class EmployeeList1(AsyncWebsocketConsumer):
 
         try:
             employee = await self.get_employee(employee_mail)
-            self.emp_id=employee.employee_id
-            org_id, org_name = await self.get_org_details(employee)
-            self.orgn_name = org_name
-            serializer = EmployeeSerializers(employee)
-            self.employee_data = serializer.data
-            other_employees = await self.get_other_employee(org_id, employee.id)
-            self.other_employee = other_employees
-            notifications = await sync_to_async(self.get_unread_notifications_count)(employee.employee_id)
-            self.notify = notifications
-            self.periodic_task = asyncio.create_task(self.send_periodic_notifications())
-            employees_list = await self.prepare_employee_list(
-                current_employee_id=employee.employee_id,
-                employees=other_employees,
-                org_name=org_name,
-                notifications=notifications
-            )
+            org_id, emp_id=employee['org_id'], employee['emp_id']
+            print(f"org_id:{org_id}")
+            print(f"empid in receive:{emp_id}")
+            if org_id is None:
+                emp_data = []
+            else:
+                emp_data = await self.employee_list(org_id, emp_id)
+            unread_count = await sync_to_async(self.get_unread_notifications_count)(emp_id)
 
+            
             await self.send(text_data=json.dumps({
-                "Status": "Success",
-                "Data": self.employee_data,
-                "message": "Login Successful",
-                "Org_Employees": {
-                    "count_type": "unread_count",
-                    "chat_receiver": employee.employee_id,
-                    "count": notifications["unread_count"],
-                    "unread_sender_count": notifications["unread_sender"],
-                    "unread_messages": notifications["unread_messages"],
-                    "employee_list": employees_list
-                }
+                # 'count_type': 'unread_count',
+                # 'chat_receiver': unread_count['receiver'],
+                # 'count': unread_count['unread_count'],
+                # "unread_sender_count": unread_count['unread_sender'],
+                # 'unread_messages': unread_count['unread_messages'],
+                "notification_data":unread_count,
+                "emp_data":emp_data,
             }))
-
-        except Employee.DoesNotExist:
+            
+            
+        except User.DoesNotExist:
             await self.send(text_data=json.dumps({
                 "Status": "Error",
                 "message": "Employee not found"
             }))
 
+    async def employee_list(self, org_id, receiver_emp_id):
+        from .serializers import EmployeeSerializers
 
-    async def send_periodic_notifications(self):
-        while True:
-            await self.send_notifications_update()
-            await asyncio.sleep(1)
+        org_employee_list = await sync_to_async(list)(User.objects.filter(org_id=org_id))
+        serializer = UserSerializer(org_employee_list, many=True)
+        latest_chat_employee_list_data=[]
+        for item in serializer.data:
+            emp_id = item.get('emp_id') 
+            print(f"emp id :{emp_id}")
+            if emp_id:
+                emp_details = await self.get_employee_details(emp_id)
+                print(f"emp  details:{emp_details['id']} - {emp_id}")
+                try:
+                    latest_message = await sync_to_async(lambda : EmployeeChat.objects.filter(Q(sender = emp_id, receiver=receiver_emp_id) | Q(sender=receiver_emp_id, receiver=emp_id)).order_by('-timestamp').first())()
+                    print(f"latest messages are :{latest_message}")
 
-    async def send_notifications_update(self):
-        unread_count = await sync_to_async(self.get_unread_notifications_count)(self.emp_id)
-        sorted_employee_list_view = await self.prepare_employee_list(self.emp_id, self.other_employee, self.orgn_name, self.notify)
+                except Exception as e:
+                    print(f"Global error in EmployeeList.get: {str(e)}")
+        
+                latest_chat_employee_list_data.append(emp_details)
 
-        await self.send(text_data=json.dumps({
-            "Data": self.employee_data,
-            "Org_Employees":{'count_type': 'unread_count',
-            'chat_receiver': unread_count['receiver'],
-            'count': unread_count['unread_count'],
-            "unread_sender_count": unread_count['unread_sender'],
-            'unread_messages': unread_count['unread_messages'],
-            'employee_list': sorted_employee_list_view}
-            
-        }, ensure_ascii=False))
-
+        return latest_chat_employee_list_data
 
 
     @database_sync_to_async
     def get_employee(self, employee_mail):
-        return Employee.objects.get(email=employee_mail)
+        data = User.objects.get(email=employee_mail)
+        return UserSerializer(data).data
 
     @database_sync_to_async
-    def get_other_employee(self, org_id, excluded_emp_id):
-        return list(Employee.objects.filter(Org_id=org_id).exclude(id=excluded_emp_id))
-
-    @sync_to_async
-    def serialize_employee(self, employee):
-        return EmployeeSerializers(employee).data
-
-    @sync_to_async
-    def get_org_details(self, employee):
-        org = employee.Org_id
-        return org.id, org.OrgName
-
-
-    @sync_to_async
-    def prepare_employee_list(self, current_employee_id, employees, org_name, notifications):
-        from chat.models import EmployeeChat
+    def get_employee_details(self, emp_id):
+        emp_data = TMEmployeeDetail.objects.get(id=emp_id)
+        return EmployeeSerializers(emp_data).data
+    
+    
+    # async def send_notifications_update(self):
+    #     unread_count = await sync_to_async(self.get_unread_notifications_count)(self.emp_id)
+    #     print(f"unread count:{unread_count}")
+        # await self.send(text_data=json.dumps({
+        #     'count_type': 'unread_count',
+        #     'chat_receiver': unread_count['receiver'],
+        #     'count': unread_count['unread_count'],
+        #     "unread_sender_count": unread_count['unread_sender'],
+        #     'unread_messages': unread_count['unread_messages'],
+        # }, ensure_ascii=False))
         
+
+    def get_unread_notifications_count(self, emp_id):
         keys = self.load_key()
-        unread_by_sender = {
-            n['sender']: n for n in notifications['unread_messages']
-        }
-        employee_list = []
+        unread_messages=[]
+        unread_messages_by_sender = defaultdict(lambda:{"unread_count_sender":0,"messages":[]})
+        unread_count=0
+        chats = EmployeeChat.objects.filter(Q(receiver_id = emp_id)| Q(messages__icontains = emp_id))
+        # print(f"chats:{chats}")
 
-        for emp in employees:
-            latest_msg = None
-            sorted_msgs=None
-            try:
-                chat = EmployeeChat.objects.filter(
-                    Q(sender__employee_id=emp.employee_id, receiver__employee_id=current_employee_id) |
-                    Q(sender__employee_id=current_employee_id, receiver__employee_id=emp.employee_id)
-                ).order_by('-timestamp').first()
+        if not chats.exists:
+            return None
 
-                if chat:
-                    if chat and chat.messages:
-                        sorted_msgs = sorted(chat.messages, key=lambda m: m.get('timestamp', ''), reverse=True)
-                        encrypted_content = sorted_msgs[0].get("content")
-                        latest_msg_sender = sorted_msgs[0].get("sender", "")
-                        latest_msg_receiver = sorted_msgs[0].get("receiver", "")
-                        timestamp_m=sorted_msgs[0].get("timestamp", "")
-                        decrypted = encrypted_content
-                        for k in keys:
-                            try:
-                                dec = self.decrypt_message(encrypted_content, k)
-                                if dec:
-                                    decrypted = dec
-                                    break
-                            except:
-                                pass
-                        latest_msg = decrypted
-                        notifications = sync_to_async(self.get_unread_notifications_count)(self.emp_id)
+        for chat in chats:
+            # print(f"chat from unread notifications:{chat}")
+            for msg in chat.messages:
+                # print(f"msg are :{msg}")
+                if msg.get('receiver') == emp_id  and not msg.get('read',False):
+                    unread_count+=1
+                    sender_id = msg.get('sender')
 
-                        unread_info = unread_by_sender.get(emp.employee_id, {"unread_count_sender": 0, "messages": []})
-                        
-                        employee_list.append({
-                            "employee_id": emp.employee_id,
-                            "employee_data": {
-                                "name": emp.name,
-                                "image": emp.image.url if emp.image else None,
-                                "email": emp.email,
-                                "status": emp.status,
-                                "company": org_name,
-                            },
-                            "id": emp.id,
-                            "latest_message": {
-                                "sender": sorted_msgs[0].get("sender", ""),
-                                "receiver": sorted_msgs[0].get("receiver", ""),
-                                "sender_name":sorted_msgs[0].get("sender_name",""),
-                                "receiver_name":sorted_msgs[0].get("receiver_name",""),
-                                "content": latest_msg,
-                                "file": sorted_msgs[0].get("file", ""),
-                                "timestamp": sorted_msgs[0].get("timestamp", ""),
-                                "read": sorted_msgs[0].get("read", False),
-                                "unread": not sorted_msgs[0].get("read", False)
-                                },
-                            "unread_notifications": {
-                                "sender": emp.employee_id,
-                                "receiver_employee_id": current_employee_id,
-                                "total_unread_count": unread_info["unread_count_sender"],
-                                "unread_messages": unread_info["messages"]
-                            }
-                        })
+                    if msg.get('deleted',False):
+                        decrypted_content = 'Deleted Message'
+                    
+                    else:
+                        encrypted_content = msg.get('content',"")
+                        decrypted_content = encrypted_content
 
-                else:
-                    employee_list.append({
-                            "employee_id": emp.employee_id,
-                            "employee_data": {
-                                "name": emp.name,
-                                "image": emp.image.url if emp.image else None,
-                                "email": emp.email,
-                                "status": emp.status,
-                                "company": org_name,
-                            },
-                            "id": emp.id,
-                            "latest_message": {
-                                "content": latest_msg,
-                                },
-                            "unread_notifications": {"unread_count": 0, "unread_sender": 0, "unread_messages": []}
-                        })
+                        if encrypted_content and keys:
+                            for encryption_key in keys:
+                                try:
+                                    decrypted_content= self.decrypt_message(encrypted_content,encryption_key)
+                                    if decrypted_content is not None:
+                                        break
+                                    
+                                except Exception as e:
+                                    print(f"Decryption failed with key {encryption_key} error as :{str(e)}")
 
-                employee_list.sort(
-                key=lambda x: (x.get("latest_message", {}) or {}).get("timestamp", ""),
-                reverse=True)
+                    msg['unread_messages'] = decrypted_content
+                    unread_messages_by_sender[sender_id]['unread_count_sender']+=1
+                    unread_messages_by_sender[sender_id]['messages'].append(msg)
+                    unread_messages.append(msg)
+            
+            unread_count = len(unread_messages)
+            formatted_unread_messages=[
+                {"sender":sender, "receiver":emp_id, **data} for sender,data in unread_messages_by_sender.items()
+            ]
 
-            except Exception as e:
-                latest_msg = None
+            return {
+                "receiver":emp_id,
+                "unread_count":unread_count,
+                "unread_sender":len(unread_messages_by_sender),
+                "unread_messages":formatted_unread_messages
+            }
 
-        return employee_list
 
     def load_key(self):
         import os, base64
@@ -219,39 +177,3 @@ class EmployeeList1(AsyncWebsocketConsumer):
             return fernet.decrypt(encrypted_content.encode()).decode()
         except:
             return None
-
-    def get_unread_notifications_count(self, employee_id):
-        from collections import defaultdict
-        from chat.models import EmployeeChat
-        keys = self.load_key()
-        unread_messages = []
-        unread_by_sender = defaultdict(lambda: {"unread_count_sender": 0, "messages": []})
-
-        for chat in EmployeeChat.objects.filter(
-            Q(receiver__employee_id=employee_id) | Q(messages__icontains=employee_id)
-        ):
-            for msg in chat.messages:
-                if msg.get("receiver") == employee_id and not msg.get("read", False):
-                    sender = msg.get("sender")
-                    decrypted = msg.get("content")
-                    for k in keys:
-                        try:
-                            dec = self.decrypt_message(decrypted, k)
-                            if dec:
-                                decrypted = dec
-                                break
-                        except:
-                            continue
-                    msg["unread_message"] = decrypted
-                    unread_by_sender[sender]["unread_count_sender"] += 1
-                    unread_by_sender[sender]["messages"].append(msg)
-                    unread_messages.append(msg)
-
-        return {
-            "receiver": employee_id,
-            "unread_count": len(unread_messages),
-            "unread_sender": len(unread_by_sender),
-            "unread_messages": [
-                {"sender": s, "receiver": employee_id, **d} for s, d in unread_by_sender.items()
-            ]
-        }

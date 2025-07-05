@@ -1,5 +1,5 @@
 from django.db import models
-from employee.models import Employee
+from employee.models import TMEmployeeDetail
 from datetime import datetime
 import pytz
 from cryptography.fernet import Fernet
@@ -12,8 +12,8 @@ class EmployeeChat(models.Model):
         ("delivered","Delivered"),
         ("seen","Seen")]
 
-    sender=models.ForeignKey(Employee, related_name="sender_message", on_delete=models.CASCADE)
-    receiver=models.ForeignKey(Employee,related_name="receiver_message", on_delete=models.CASCADE)
+    sender=models.ForeignKey(TMEmployeeDetail, related_name="sender_message", on_delete=models.CASCADE)
+    receiver=models.ForeignKey(TMEmployeeDetail,related_name="receiver_message", on_delete=models.CASCADE)
     messages=models.JSONField(default=list, null=True, blank=True)
     timestamp=models.DateTimeField(auto_now_add=True, null=True, blank=True)
 
@@ -68,7 +68,23 @@ class EmployeeChat(models.Model):
         return f'Message in {self.sender} - {self.receiver}'
 
 
-class ERp_backup(models.Model):
+# class ERp_backup(models.Model):
+#     key = models.CharField(max_length=255)
+#     value = models.JSONField()
+#     created_at = models.DateTimeField(auto_now_add=True)
+#     read_at = models.DateTimeField(null=True, blank=True)
+#     deleted_at = models.DateTimeField(null=True, blank=True)
+
+#     class Meta:
+#         db_table = 'erp_backup'  
+
+#     def __str__(self):
+#         return self.key
+
+
+
+
+class message_backup(models.Model):
     key = models.CharField(max_length=255)
     value = models.JSONField()
     created_at = models.DateTimeField(auto_now_add=True)
@@ -76,7 +92,7 @@ class ERp_backup(models.Model):
     deleted_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
-        db_table = 'erp_backup'  
+        db_table = 'message_backup'  
 
     def __str__(self):
         return self.key

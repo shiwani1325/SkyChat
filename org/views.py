@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.contrib.auth import authenticate
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
+from custom.permissions import IsOrganisation
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from custom.models import User
 from custom.serializers import UserSerializer
@@ -17,9 +18,7 @@ class CreateOrgWithUserView(APIView):
     permission_classes = [AllowAny, IsAdminUser]
     parser_classes=[MultiPartParser, FormParser]
 
-
     def post(self, request):
-        # print(f"requested data :{request.data}")
         serializer = UserWithOrganisationSerializer(data=request.data)
         if serializer.is_valid():
             try:
@@ -94,8 +93,6 @@ class CreateOrgWithUserView(APIView):
 
 
 
-
-
 class CheckOrgDuplicateFieldAPIView(APIView):
     permission_classes = [IsAdminUser]
     allowed_fields ={
@@ -144,3 +141,25 @@ class CheckOrgDuplicateFieldAPIView(APIView):
         return Response({'status':"success","data":data_exists}, status=status.HTTP_200_OK)
 
 
+
+
+class OrgDetailAPI(APIView):
+    permission_classes = [IsOrganisation]
+    def get(self, request):
+        try:
+            id = request.query_params.get('id')
+            if id:
+                data = TMOrganisationDetail.objects.get(id=id)
+                serializer = OrganisationSerializer(data)
+                return Response({'status':"success", "data":serializer.data}, status=status.HTTP_200_OK)
+
+            else:
+                return Response({"status":"success",'message':"Provide valid id"}, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            return Response({'status':"Error", "message":str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        
+
+
+        
