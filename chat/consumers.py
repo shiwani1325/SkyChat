@@ -32,8 +32,8 @@ class EmployeeChat(AsyncWebsocketConsumer):
         self.sender_id = self.scope['url_route']['kwargs']['sender_id']
         self.receiver_id = self.scope['url_route']['kwargs']['receiver_id']
         self.emp_room_group_name = f'emp_room_{min(self.sender_id, self.receiver_id)}_{max(self.sender_id, self.receiver_id)}'
-        print(f"sender id is:{self.sender_id} and receiver id is :{self.receiver_id}")
-        print(f"Room created:{self.emp_room_group_name}")
+        # print(f"sender id is:{self.sender_id} and receiver id is :{self.receiver_id}")
+        # print(f"Room created:{self.emp_room_group_name}")
 
         # await add_active_user(self.sender_id, self.emp_room_group_name)
         await self.channel_layer.group_add(self.emp_room_group_name, self.channel_name)
@@ -102,7 +102,7 @@ class EmployeeChat(AsyncWebsocketConsumer):
         media_files = data.get('file', [])
         replied_to = data.get('replied_to')
         forwarded_content = data.get('forwarded_content', [])
-        print(f"data receive ;{data}")
+        # print(f"data receive ;{data}")
 
         generate_and_save_key()
         keys = load_keys()
@@ -112,14 +112,14 @@ class EmployeeChat(AsyncWebsocketConsumer):
         self.key = keys[-1]
         cipher_suite = Fernet(self.key)
         encrypted_content = cipher_suite.encrypt(message_content.encode()).decode() if message_content else None
-        print(f"encrypted content : {encrypted_content}")
+        # print(f"encrypted content : {encrypted_content}")
 
         files_info = await asyncio.gather(*(self.save_uploaded_file(f, sender_id) for f in media_files))
 
         sender_obj, sender_name = await self.get_employee_and_name(sender_id)
-        print(f"Senderobj:{sender_obj} and {sender_name}")
+        # print(f"Senderobj:{sender_obj} and {sender_name}")
         message_id = str(uuid.uuid4())
-        print(f"message is :{message_id}")
+        # print(f"message is :{message_id}")
 
         preview_message = {
             'type': 'chat_message',
@@ -139,11 +139,11 @@ class EmployeeChat(AsyncWebsocketConsumer):
         async def process_receiver(receiver_id):
             try:
                 receiver_obj, receiver_name = await self.get_employee_and_name(receiver_id)
-                print(f"receiver obj and name :{receiver_obj} and {receiver_name}")
+                # print(f"receiver obj and name :{receiver_obj} and {receiver_name}")
                 receiver_room = await get_user_room(receiver_id)
-                print(f"Receiver {receiver_id} active in room: {receiver_room}, current room: {self.emp_room_group_name}")
+                # print(f"Receiver {receiver_id} active in room: {receiver_room}, current room: {self.emp_room_group_name}")
                 read = receiver_room == self.emp_room_group_name
-                print(f"Read status for receiver {receiver_id}: {read}")
+                # print(f"Read status for receiver {receiver_id}: {read}")
                 # read = receiver_room == self.emp_room_group_name
 
                 message_data = await self.save_chat_message(
@@ -192,7 +192,7 @@ class EmployeeChat(AsyncWebsocketConsumer):
         )
 
         chat_obj, _ = EmployeeChatModel.objects.get_or_create(sender=sender, receiver=receiver)
-        print(f"Chatobj:{chat_obj}")
+        # print(f"Chatobj:{chat_obj}")
 
         message = {
             'sender_id': sender_id,

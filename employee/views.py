@@ -18,6 +18,31 @@ from custom.utils import get_tokens_for_user
 from rest_framework.parsers import MultiPartParser, FormParser
 
 
+
+
+class OrgBasedEmpView(APIView):
+    permission_classes = [IsOrganisation]
+    def get(self, request):
+        try:
+            org_id=request.query_params.get("org_id")
+            if not org_id:
+                return Response({'status':"error", 'message':"Org id is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+            if not TMOrganisationDetail.objects.filter(id=org_id).exists():
+                return Response({'status':"error", "message":"Organisation not found"}, status=status.HTTP_404_NOT_FOUND)
+            
+            data = User.objects.filter(org_id=org_id).exclude(emp_id__isnull=True)
+            emp_ids = [emp.emp_id.id for emp in data]
+            emp_data = TMEmployeeDetail.objects.filter(id__in = emp_ids)
+
+            serializer = EmployeeSerializers(emp_data, many=True).data
+            return Response({'status':"success", "data":serializer}, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            return Response({"status":"Error", "message":str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+
 class CreateEmployeeWithUserView(APIView):
     permission_classes = [IsOrganisation]
     parser_classes = [MultiPartParser, FormParser]
