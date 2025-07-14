@@ -21,6 +21,7 @@ from datetime import datetime
 
 class EmployeeList1(AsyncWebsocketConsumer):
     async def connect(self):
+        # self.employee_mail = self.scope['url_route']['kwargs']['employee_mail']
         await self.accept()
         self.keep_sending = True
         asyncio.create_task(self.periodic_update())
@@ -30,6 +31,8 @@ class EmployeeList1(AsyncWebsocketConsumer):
 
 
     async def receive(self, text_data):
+        # employee_mail = request.query_params.get('employee_mail')
+        # self.employee_mail = request.query_params.get('employee_mail')
         request_data = json.loads(text_data)
         self.employee_email = request_data.get('employee_mail') 
         employee_mail = request_data.get('employee_mail')

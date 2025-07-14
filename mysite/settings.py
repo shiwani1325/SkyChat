@@ -6,7 +6,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-9+kq9z%z99i=1*7fs921674v-cz%c-qwgi8j72tpb9-%*%aw_1'
 DEBUG = True
 
-ALLOWED_HOSTS = ['*','192.168.0.236', '143.110.242.217']
+ALLOWED_HOSTS = ['*', '143.110.242.217']
 
 
 INSTALLED_APPS = [
@@ -129,11 +129,6 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'mediafiles')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-CHANNEL_LAYERS = {
-    "default": {
-        "BACKEND": "channels.layers.InMemoryChannelLayer"
-    }
-}
 
 
 REST_FRAMEWORK = {
@@ -220,3 +215,11 @@ SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
 }
+
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer"
+    }
+}
+
