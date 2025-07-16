@@ -1,6 +1,3 @@
 /env/
-/Encryption_Key.key/
-/emplist.py/
-/consumers.py/
-/consumerstest.py/
-/demo.py/
+db.sqlite3
+Encryption_Key.key
