@@ -32,11 +32,9 @@ class AllLoginView(APIView):
             return Response({'status':"error","message":"Invalid email"}, status=status.HTTP_401_UNAUTHORIZED)
         user = authenticate(request, email=email, password=password)
         
-
         if user is None:
             return Response({'status':'error', "message":"Invalid password"}, status=status.HTTP_401_UNAUTHORIZED)
             
-        
         user_data=UserSerializer(user).data
         tokens = get_tokens_for_user(user, user_data)
         role_id = user_data['role']
@@ -50,6 +48,10 @@ class AllLoginView(APIView):
         elif role_id == Role_admin:
             try:
                 serializer_data = self.organisation_view(user)
+                if serializer_data['Status']=='active':
+                    user_final_data={**serializer_data, **user_data }
+                    return Response({"status":"success",'tokens': tokens, "user":user_final_data}, status=status.HTTP_200_OK)
+                return Response({'status':"error", "message":"Your account is currently inactive"}, status=status.HTTP_403_FORBIDDEN)
 
             except TMOrganisationDetail.DoesNotExist:
                 return Response({"status":"error", "message":"Organisation data not found"}, status=status.HTTP_400_BAD_REQUEST)
@@ -57,7 +59,15 @@ class AllLoginView(APIView):
         elif role_id == Role_user:
             try:
                 serializer_data=self.employee_view(user)
-
+                if serializer_data['Status'] == 'active':
+                    user_final_data={**serializer_data, **user_data }
+                    orgid = user_final_data['org_id']
+                    serializer_data = self.organisation_status(orgid)
+                    
+                    if serializer_data['Status'] == 'inactive':
+                        return Response({'status':"error", "message":"Your account is currently inactive"}, status=status.HTTP_403_FORBIDDEN)
+                    return Response({'status':"success",'tokens': tokens, "user":user_final_data}, status=status.HTTP_200_OK)
+                return Response({'status':"error", "message":"Your account is currently inactive"}, status=status.HTTP_403_FORBIDDEN)
             except TMEmployeeDetail.DoesNotExist:
                 return Response({'status':"error", "message":"Employee data not found"}, status = status.HTTP_400_BAD_REQUEST)
         
@@ -78,6 +88,11 @@ class AllLoginView(APIView):
 
     def organisation_view(self, user):
         org_data = TMOrganisationDetail.objects.get(user=user)
+        serializer = OrganisationSerializer(org_data)
+        return serializer.data
+
+    def organisation_status(self, id):
+        org_data = TMOrganisationDetail.objects.get(id=id)
         serializer = OrganisationSerializer(org_data)
         return serializer.data
 
