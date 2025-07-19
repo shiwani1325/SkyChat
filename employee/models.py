@@ -13,14 +13,14 @@ def profile_image_upload_path(instance, filename):
 
 class TMEmployeeDetail(models.Model):
     GENDER_CHOICES = [
-        ('male', 'Male'),
-        ('female', 'Female'),
-        ('other', 'Other'),
+        ('Male', 'Male'),
+        ('Female', 'Female'),
+        ('Other', 'Other'),
     ]
 
     STATUS_CHOICES = [
-        ('active', 'Active'),
-        ('inactive', 'Inactive'),
+        ('Active', 'Active'),
+        ('Inactive', 'Inactive'),
     ]
 
     EmployeeName = models.CharField(max_length=255)

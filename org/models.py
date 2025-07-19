@@ -13,8 +13,8 @@ def logo_upload_path(instance, filename):
 class TMOrganisationDetail(models.Model):
 
     STATUS_CHOICES = [
-        ('active', 'Active'),
-        ('inactive', 'Inactive'),
+        ('Active', 'Active'),
+        ('Inactive', 'Inactive'),
     ]
 
     OrgName = models.CharField(max_length=100)

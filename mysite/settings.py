@@ -86,6 +86,12 @@ DATABASES = {
     }
 }
 
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': BASE_DIR / 'shiwani.sqlite3',
+#     }
+# }
 
 # DATABASES = {
 #     'default': {

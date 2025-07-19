@@ -8,7 +8,7 @@ import requests
 from .models import TMEmployeeDetail
 from .serializers import EmployeeSerializers, UserWithEmployeeSerializer, EditEmployeeSerializers, EmployeeCreateSerializer
 from rest_framework.permissions import AllowAny, IsAuthenticated
-from custom.permissions import IsOrganisation
+from custom.permissions import IsOrganisation, IsEmployee
 from org.models import TMOrganisationDetail
 from custom.models import User
 from dept.models import OrgDepartment, OrgDesignation
@@ -176,6 +176,40 @@ class CheckEmpDuplicateFieldAPIView(APIView):
             data_exists = exclude_id.exists()
             
         return Response({'status':"success","data":data_exists}, status=status.HTTP_200_OK)
+
+
+class EmpBasedEmpView(APIView):
+    permission_classes = [IsAuthenticated, IsEmployee]
+    def get(self, request,id=None):
+        emp_data = TMEmployeeDetail.objects.get(id=id)
+        serializer = EmployeeSerializers(emp_data)
+        return Response({'status':"success", "data":serializer.data}, status=status.HTTP_200_OK)
+
+    #   only for updating profile image
+    def patch(self, request, id=None):
+        try:
+            if id:
+                data = get_object_or_404(TMEmployeeDetail, id=id)
+                profile_image= request.data.get('ProfileImage')
+                if not profile_image:
+                    return Response({'status':"error", "message":"Only profile image is allowed"}, status=status.HTTP_400_BAD_REQUEST)
+                
+                updated_data = {"ProfileImage":profile_image}
+                serializer = EmployeeCreateSerializer(data, data=updated_data, partial =True)
+                if serializer.is_valid():
+                    if request.user.is_authenticated:
+                        data.UpdatedBy  = request.user
+                    serializer.save()
+                return Response({'status':"success", "data":serializer.data}, status=status.HTTP_200_OK)
+        
+        except Exception as e:
+            return Response({'status':"error", "message":str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+
+
+
 
 
 

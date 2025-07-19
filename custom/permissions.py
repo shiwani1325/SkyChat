@@ -9,3 +9,10 @@ class IsOrganisation(BasePermission):
     
     def has_permission(self, request, view):
         return bool(request.user and hasattr(request.user, 'role') and request.user.role.RoleName == 'Admin')
+
+
+
+class IsEmployee(BasePermission):
+    
+    def has_permission(self, request,view):
+        return bool(request.user and hasattr(request.user, 'role') and request.user.role.RoleName == 'User')

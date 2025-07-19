@@ -20,7 +20,7 @@ class UserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
         if not email:
             raise ValueError("Email is required")
-        email = self.normalize_email(email)
+        email = self.normalize_email(email).lower()
         user = self.model(email=email, **extra_fields)
         user.set_password(password) 
         user.save(using=self._db)
@@ -35,6 +35,7 @@ class UserManager(BaseUserManager):
             superadmin_role = TMRole.objects.create(RoleName='Superadmin')
 
         extra_fields.setdefault('role', superadmin_role)
+        extra_fields.setdefault('name', "Shiwani")
         return self.create_user(email, password, **extra_fields)
 
 
@@ -61,3 +62,8 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return self.email
+
+    def save(self, *args, **kwargs):
+        if self.email:
+            self.email = self.email.lower()
+        super().save(*args, **kwargs)
