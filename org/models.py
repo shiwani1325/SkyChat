@@ -31,7 +31,7 @@ class TMOrganisationDetail(models.Model):
     CreatedBy = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='org_created')
     UpdatedOn = models.DateTimeField(auto_now=True)
     UpdatedBy = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='org_updated')
-    Status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
+    Status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Active')
 
     class Meta:
         db_table = 'TMOrganisationDetail'

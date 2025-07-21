@@ -30,7 +30,7 @@ class TMEmployeeDetail(models.Model):
     DesignationId = models.ForeignKey(OrgDesignation, on_delete=models.SET_NULL, null=True)
     ProfileImage = models.ImageField(upload_to=profile_image_upload_path, null=True, blank=True)
     DateOfJoining = models.DateField()
-    Status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
+    Status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Active')
     DateOfBirth = models.DateField()
     Gender = models.CharField(max_length=10, choices=GENDER_CHOICES)
     Address = models.TextField()

@@ -70,7 +70,7 @@ class AllLoginView(APIView):
                     orgid = user_final_data['org_id']
                     serializer_data = self.organisation_status(orgid)
                     
-                    if serializer_data['Status'] == 'inactive':
+                    if serializer_data['Status'] == 'Inactive':
                         return Response({'status':"error", "message":"Your account is currently Inactive"}, status=status.HTTP_403_FORBIDDEN)
                     return Response({'status':"success",'tokens': tokens, "user":user_final_data}, status=status.HTTP_200_OK)
                 return Response({'status':"error", "message":"Your account is currently Inactive"}, status=status.HTTP_403_FORBIDDEN)
