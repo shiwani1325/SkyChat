@@ -51,10 +51,10 @@ class CreateOrgWithUserView(APIView):
                 if request.user.is_authenticated:
                     data.UpdatedBy=request.user
 
-                if data.Status == 'inactive':
-                    data.Status = 'active'
+                if data.Status == 'Inactive':
+                    data.Status = 'Active'
                 else:
-                    data.Status = 'inactive'
+                    data.Status = 'Inactive'
                 
                 data.save()
                 return Response({"status":"success","message":"Particular org data get deleted"}, status=status.HTTP_200_OK)

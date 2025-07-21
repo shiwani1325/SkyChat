@@ -78,14 +78,14 @@ class CreateEmployeeWithUserView(APIView):
                 if request.user.is_authenticated:
                     data.UpdatedBy = request.user
 
-                if data.Status == 'inactive':
-                    data.Status = 'active'
+                if data.Status == 'Inactive':
+                    data.Status = 'Active'
                 else:
-                    data.Status = 'inactive'
+                    data.Status = 'Inactive'
 
                 data.save()
                 updated_data = serializer.data
-                return Response({'status':"success","message":"Particular employee data get inactive", "data":updated_data}, status=status.HTTP_200_OK)
+                return Response({'status':"success","message":"Particular employee data get Inactive", "data":updated_data}, status=status.HTTP_200_OK)
 
         except TMEmployeeDetail.DoesNotExist:
             return Response({'status':"error", "message":"Employee not found with this ID"}, status=status.HTTP_404_NOT_FOUND)
