@@ -10,9 +10,15 @@ class UserSerializer(serializers.ModelSerializer):
         extra_kwargs = {'password': {'write_only': True}}
 
 
-    def get_role_name(self,obj):
-        if obj.role:
-            return obj.role.RoleName
+    # def get_role_name(self,obj):
+    #     if obj.role:
+    #         return obj.role.RoleName
+    #     return None
+
+    def get_role_name(self, obj):
+        role = getattr(obj, 'role', None)
+        if role:
+            return getattr(role, 'RoleName', None)
         return None
 
 

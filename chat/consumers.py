@@ -38,7 +38,7 @@ class EmployeeChat(AsyncWebsocketConsumer):
         # print(f"sender id is:{self.sender_id} and receiver id is :{self.receiver_id}")
         # print(f"Room created:{self.emp_room_group_name}")
 
-        # await add_active_user(self.sender_id, self.emp_room_group_name)
+        await add_active_user(self.sender_id, self.emp_room_group_name)
         await self.channel_layer.group_add(self.emp_room_group_name, self.channel_name)
         await self.accept()
 
@@ -47,38 +47,76 @@ class EmployeeChat(AsyncWebsocketConsumer):
         # # print(f"Current emp_room_group_name: {self.emp_room_group_name}")
         # if receiver_room == self.emp_room_group_name:
         #     await self.mark_all_messages_read(self.receiver_id, self.sender_id)
+        await self.mark_all_messages_read(self.sender_id,self.receiver_id)
 
     async def disconnect(self, close_code):
         await remove_active_user(self.sender_id)
         await self.channel_layer.group_discard(self.emp_room_group_name, self.channel_name)
-
-    async def mark_all_messages_read(self, receiver_id, sender_id):
-        from .models import EmployeeChat as EmployeeChatModel
+    
+    async def mark_all_messages_read(self, connected_user_id, chat_partner_id):
+        from .models import EmployeeChat
         try:
-            chats = await database_sync_to_async(list)(EmployeeChatModel.objects.filter(
-                Q(sender__id=sender_id, receiver__id=receiver_id) |
-                Q(sender__id=receiver_id, receiver__id=sender_id)
-            ))
+            chats_q = await database_sync_to_async(EmployeeChat.objects.filter)(
+                Q(sender__id=connected_user_id, receiver__id=chat_partner_id) | 
+                Q(sender__id=chat_partner_id, receiver__id=connected_user_id)
+            )
+            chats = await database_sync_to_async(list)(chats_q)
 
             updated_messages = []
             for chat in chats:
                 modified = False
                 for msg in chat.messages:
-                    if not msg.get("read", True):
-                        msg["read"] = True
-                        updated_messages.append(msg)
+                    if str(msg.get('receiver')) == str(connected_user_id) and not msg.get('read', True):
+                        msg['read'] = True
+                        msg['status']="seen"
                         modified = True
-                if modified:
-                    await database_sync_to_async(setattr)(chat, "messages", chat.messages)
-                    await database_sync_to_async(chat.save)(update_fields=["messages"])
+                        updated_messages.append(msg)
 
-            if updated_messages:
-                await self.channel_layer.group_send(
-                    self.emp_room_group_name,
-                    {'type': "updating_existing_message", "updated_messages": updated_messages}
-                )
+                if modified:
+                    await database_sync_to_async(setattr)(chat, 'messages', chat.messages)
+                    await database_sync_to_async(chat.save)(update_fields=['messages'])
+
+            # if updated_messages:
+            #     await self.channel_layer.group_send(
+            #         self.emp_room_group_name,
+            #         {
+            #             'type': "updating_existing_message",
+            #             'updated_messages': updated_messages
+            #         }
+            #     )
         except Exception as e:
-            print(f"Error in mark_all_messages_read: {e}")
+            print(f'[Error in mark_all_messages_read]: {e}')
+
+
+
+
+    # async def mark_all_messages_read(self, receiver_id, sender_id):
+    #     from .models import EmployeeChat as EmployeeChatModel
+    #     try:
+    #         chats = await database_sync_to_async(list)(EmployeeChatModel.objects.filter(
+    #             Q(sender__id=sender_id, receiver__id=receiver_id) |
+    #             Q(sender__id=receiver_id, receiver__id=sender_id)
+    #         ))
+
+    #         updated_messages = []
+    #         for chat in chats:
+    #             modified = False
+    #             for msg in chat.messages:
+    #                 if not msg.get("read", True):
+    #                     msg["read"] = True
+    #                     updated_messages.append(msg)
+    #                     modified = True
+    #             if modified:
+    #                 await database_sync_to_async(setattr)(chat, "messages", chat.messages)
+    #                 await database_sync_to_async(chat.save)(update_fields=["messages"])
+
+    #         if updated_messages:
+    #             await self.channel_layer.group_send(
+    #                 self.emp_room_group_name,
+    #                 {'type': "updating_existing_message", "updated_messages": updated_messages}
+    #             )
+    #     except Exception as e:
+    #         print(f"Error in mark_all_messages_read: {e}")
 
     async def updating_existing_message(self, event):
         for msg in event["updated_messages"]:
@@ -105,6 +143,9 @@ class EmployeeChat(AsyncWebsocketConsumer):
         media_files = data.get('file', [])
         replied_to = data.get('replied_to')
         forwarded_content = data.get('forwarded_content', [])
+
+            
+
         # print(f"data receive ;{data}")
 
         for each_forwarded_content in forwarded_content:
@@ -145,17 +186,20 @@ class EmployeeChat(AsyncWebsocketConsumer):
         }
         await self.send(text_data=json.dumps(preview_message, ensure_ascii=False))
 
+# changes done here for status part before sent passing static   24-07-2025
+
         async def process_receiver(receiver_id):
             try:
                 receiver_obj, receiver_name = await self.get_employee_and_name(receiver_id)
                 receiver_room = await get_user_room(receiver_id)
                 expected_room = f'emp_room_{min(sender_id, receiver_id)}_{max(sender_id, receiver_id)}'
                 read = receiver_room == expected_room
-
+                status = "seen" if read else "sent"
                 message_data = await self.save_chat_message(
                     sender_id, receiver_id,
                     sender_name, receiver_name,
-                    encrypted_content, files_info, message_id, "sent", read,
+                    encrypted_content, files_info, message_id, #"sent"
+                    status, read,
                     message_type, replied_to, forwarded_content
                 )
 

@@ -12,8 +12,8 @@ class EmployeeChat(models.Model):
         ("delivered","Delivered"),
         ("seen","Seen")]
 
-    sender=models.ForeignKey(TMEmployeeDetail, related_name="sender_message", on_delete=models.CASCADE, null=True, blank=True)
-    receiver=models.ForeignKey(TMEmployeeDetail,related_name="receiver_message", on_delete=models.CASCADE, null=True, blank=True)
+    sender=models.ForeignKey(TMEmployeeDetail, related_name="sender_message", on_delete=models.CASCADE)
+    receiver=models.ForeignKey(TMEmployeeDetail,related_name="receiver_message", on_delete=models.CASCADE)
     messages=models.JSONField(default=list, null=True, blank=True)
     timestamp=models.DateTimeField(auto_now_add=True, null=True, blank=True)
 

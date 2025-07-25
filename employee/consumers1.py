@@ -49,6 +49,7 @@ class EmployeeList1(AsyncWebsocketConsumer):
                 emp_data = []
             else:
                 emp_data = await self.employee_list(org_id, emp_id, unread_map)
+                # print(f"empData are :{emp_data}")
             
             await self.send(text_data=json.dumps({
                 "notification_data":unread_count,
@@ -89,13 +90,17 @@ class EmployeeList1(AsyncWebsocketConsumer):
         the employee with the most‑recent message appears first.
         """
         org_employee_list = await sync_to_async(list)(
-            User.objects.filter(org_id=org_id)
+            User.objects.select_related('role').filter(org_id=org_id)
         )
         serializer = UserSerializer(org_employee_list, many=True)
+        # print(f"serializers data :{serializer}")
         rows = []
+        # print(f"after rows")
 
         for item in serializer.data:
+            # print(f"for loop")
             emp_id = item.get("emp_id")
+            # print(f"emp_id:{emp_id}")
             if not emp_id:
                 continue
 
