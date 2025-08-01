@@ -12,14 +12,12 @@ from datetime import datetime
 from employee.models import TMEmployeeDetail
 from .utils import generate_and_save_key, load_keys, add_active_user, remove_active_user, get_user_room
 
-
 class WebsocketConnectRoom(AsyncWebsocketConsumer):
     async def connect(self):
         await self.accept()
 
     async def disconnect(self, close_code):
         pass
-
 
 class EmployeeChat(AsyncWebsocketConsumer):
     ACTIVE_USERS = {}
@@ -34,17 +32,14 @@ class EmployeeChat(AsyncWebsocketConsumer):
         self.sender_id = self.scope['url_route']['kwargs']['sender_id']
         self.receiver_id = self.scope['url_route']['kwargs']['receiver_id']
         self.emp_room_group_name = f'emp_room_{min(self.sender_id, self.receiver_id)}_{max(self.sender_id, self.receiver_id)}'
+        await self.channel_layer.group_add(f"user_{self.sender_id}", self.channel_name)
         EmployeeChat.ACTIVE_USERS[self.sender_id] = self.emp_room_group_name
-        # print(f"sender id is:{self.sender_id} and receiver id is :{self.receiver_id}")
-        # print(f"Room created:{self.emp_room_group_name}")
 
         await add_active_user(self.sender_id, self.emp_room_group_name)
         await self.channel_layer.group_add(self.emp_room_group_name, self.channel_name)
         await self.accept()
 
         # receiver_room = await get_user_room(self.receiver_id)
-        # # print(f"Receiver room from Redis: {receiver_room}")
-        # # print(f"Current emp_room_group_name: {self.emp_room_group_name}")
         # if receiver_room == self.emp_room_group_name:
         #     await self.mark_all_messages_read(self.receiver_id, self.sender_id)
         await self.mark_all_messages_read(self.sender_id,self.receiver_id)
@@ -66,73 +61,48 @@ class EmployeeChat(AsyncWebsocketConsumer):
             for chat in chats:
                 modified = False
                 for msg in chat.messages:
+                    print(f"msg :{msg}")
                     if str(msg.get('receiver')) == str(connected_user_id) and not msg.get('read', True):
                         msg['read'] = True
                         msg['status']="seen"
                         modified = True
-                        updated_messages.append(msg)
+                        # updated_messages.append(msg)
+                        updated_messages.append({
+                            "message_id":msg.get('message_id'),
+                            "status":"seen",
+                            "read":True
+                        })
 
                 if modified:
                     await database_sync_to_async(setattr)(chat, 'messages', chat.messages)
                     await database_sync_to_async(chat.save)(update_fields=['messages'])
 
-            # if updated_messages:
-            #     await self.channel_layer.group_send(
-            #         self.emp_room_group_name,
-            #         {
-            #             'type': "updating_existing_message",
-            #             'updated_messages': updated_messages
-            #         }
-            #     )
+            if updated_messages:
+                await self.channel_layer.group_send(
+                    f'user_{chat_partner_id}',
+                    {
+                        'type':'messages_seen_ack',
+                        'updated_messages':updated_messages,
+                        'by_user':connected_user_id
+                    }
+                )
         except Exception as e:
             print(f'[Error in mark_all_messages_read]: {e}')
 
 
+    async def messages_seen_ack(self, event):
+        for msg in event['updated_messages']:
+            if 'content' in msg and msg['content']:
+                keys = load_keys()
+                if keys:
+                    cipher_suite=Fernet(keys[-1])
+                    msg['content'] = cipher_suite.decrypt(msg['content'].encode()).decode()
+        await self.send(text_data=json.dumps({
+            'type':'messages_read',
+            'updated_messages':event['updated_messages'],
+            'seen_by':event['by_user']
+        }))
 
-
-    # async def mark_all_messages_read(self, receiver_id, sender_id):
-    #     from .models import EmployeeChat as EmployeeChatModel
-    #     try:
-    #         chats = await database_sync_to_async(list)(EmployeeChatModel.objects.filter(
-    #             Q(sender__id=sender_id, receiver__id=receiver_id) |
-    #             Q(sender__id=receiver_id, receiver__id=sender_id)
-    #         ))
-
-    #         updated_messages = []
-    #         for chat in chats:
-    #             modified = False
-    #             for msg in chat.messages:
-    #                 if not msg.get("read", True):
-    #                     msg["read"] = True
-    #                     updated_messages.append(msg)
-    #                     modified = True
-    #             if modified:
-    #                 await database_sync_to_async(setattr)(chat, "messages", chat.messages)
-    #                 await database_sync_to_async(chat.save)(update_fields=["messages"])
-
-    #         if updated_messages:
-    #             await self.channel_layer.group_send(
-    #                 self.emp_room_group_name,
-    #                 {'type': "updating_existing_message", "updated_messages": updated_messages}
-    #             )
-    #     except Exception as e:
-    #         print(f"Error in mark_all_messages_read: {e}")
-
-    async def updating_existing_message(self, event):
-        for msg in event["updated_messages"]:
-            await self.update_message_in_cache(msg)
-
-    async def update_message_in_cache(self, updated_msg):
-        keys = load_keys()
-        if not keys:
-            return
-
-        self.key = keys[-1]
-        cipher_suite = Fernet(self.key)
-        if updated_msg['content']:
-            updated_msg['content'] = cipher_suite.decrypt(updated_msg['content'].encode()).decode()
-
-        await self.send(text_data=json.dumps({"type": "message_update", "updated_message": updated_msg}))
 
     async def receive(self, text_data=None, bytes_data=None):
         data = json.loads(text_data)
@@ -143,10 +113,6 @@ class EmployeeChat(AsyncWebsocketConsumer):
         media_files = data.get('file', [])
         replied_to = data.get('replied_to')
         forwarded_content = data.get('forwarded_content', [])
-
-            
-
-        # print(f"data receive ;{data}")
 
         for each_forwarded_content in forwarded_content:
             message_id= str(uuid.uuid4())
@@ -163,9 +129,7 @@ class EmployeeChat(AsyncWebsocketConsumer):
         cipher_suite = Fernet(self.key)
         encrypted_content = cipher_suite.encrypt(message_content.encode()).decode() if message_content else None
 
-
         files_info = await asyncio.gather(*(self.save_uploaded_file(f, sender_id) for f in media_files))
-        # print(f"file info :{files_info}")
 
         sender_obj, sender_name = await self.get_employee_and_name(sender_id)
         message_id = str(uuid.uuid4())
@@ -192,8 +156,11 @@ class EmployeeChat(AsyncWebsocketConsumer):
             try:
                 receiver_obj, receiver_name = await self.get_employee_and_name(receiver_id)
                 receiver_room = await get_user_room(receiver_id)
+                print(f"receiver room :{receiver_room}")
                 expected_room = f'emp_room_{min(sender_id, receiver_id)}_{max(sender_id, receiver_id)}'
+                print(f"expected room :{expected_room}")
                 read = receiver_room == expected_room
+                print(f"read:{read}")
                 status = "seen" if read else "sent"
                 message_data = await self.save_chat_message(
                     sender_id, receiver_id,
@@ -202,7 +169,6 @@ class EmployeeChat(AsyncWebsocketConsumer):
                     status, read,
                     message_type, replied_to, forwarded_content
                 )
-
 
                 emp_room_group_name = f'emp_room_{min(sender_id, receiver_id)}_{max(sender_id, receiver_id)}'
 
@@ -278,7 +244,7 @@ class EmployeeChat(AsyncWebsocketConsumer):
         try:
             format_info, b64_data = file_data.split(';base64,')
             ext = format_info.split('/')[-1]
-            if ext not in ['jpg', 'jpeg', 'png', 'pdf', 'txt', 'docx', 'xls', 'xlsx']:
+            if ext not in ['jpg', 'jpeg', 'png', 'pdf', 'txt', 'docx', 'xls', 'xlsx', ]:
                 return None
 
             filename = f"{sender_id}_{uuid.uuid4()}.{ext}"
