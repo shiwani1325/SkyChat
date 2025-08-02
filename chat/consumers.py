@@ -33,10 +33,14 @@ class EmployeeChat(AsyncWebsocketConsumer):
         self.receiver_id = self.scope['url_route']['kwargs']['receiver_id']
         self.emp_room_group_name = f'emp_room_{min(self.sender_id, self.receiver_id)}_{max(self.sender_id, self.receiver_id)}'
         await self.channel_layer.group_add(f"user_{self.sender_id}", self.channel_name)
+        await self.channel_layer.group_add(self.emp_room_group_name, self.channel_name)
+        await self.channel_layer.group_add('user_broadcast', self.channel_name)
         EmployeeChat.ACTIVE_USERS[self.sender_id] = self.emp_room_group_name
 
         await add_active_user(self.sender_id, self.emp_room_group_name)
-        await self.channel_layer.group_add(self.emp_room_group_name, self.channel_name)
+        
+
+        await self.set_user_online(self.sender_id)
         await self.accept()
 
         # receiver_room = await get_user_room(self.receiver_id)
@@ -46,8 +50,31 @@ class EmployeeChat(AsyncWebsocketConsumer):
 
     async def disconnect(self, close_code):
         await remove_active_user(self.sender_id)
+        
         await self.channel_layer.group_discard(self.emp_room_group_name, self.channel_name)
+        await self.channel_layer.group_discard('user_broadcast', self.channel_name)
+        await self.set_user_offline(self.sender_id)
     
+
+    @database_sync_to_async
+    def set_user_online(self, user_id):
+        try:
+            emp = TMEmployeeDetail.objects.get(id=user_id)
+            emp.is_online = True
+            emp.save(update_fields = ['is_online'])
+        except TMEmployeeDetail.DoesNotExist:
+            pass
+
+    @database_sync_to_async
+    def set_user_offline(self, user_id):
+        try:
+            emp = TMEmployeeDetail.objects.get(id=user_id)
+            emp.is_online = False
+            emp.last_seen = datetime.now()
+            emp.save(update_fields = ['is_online','last_seen'])
+        except TMEmployeeDetail.DoesNotExist:
+            pass
+
     async def mark_all_messages_read(self, connected_user_id, chat_partner_id):
         from .models import EmployeeChat
         try:
@@ -104,6 +131,19 @@ class EmployeeChat(AsyncWebsocketConsumer):
         }))
 
 
+    async def user_status_update(self, event):
+        print(f"userstatusupdate")
+        try:
+            await self.send(text_data = json.dumps({
+                'type':'user_status_update',
+                'user_id':event['user_id'],
+                'status': event['status'],
+                'last_seen':event['last_seen']
+            }))
+        except Exception as e:
+            print(f"user status update error :{e}")
+
+
     async def receive(self, text_data=None, bytes_data=None):
         data = json.loads(text_data)
         sender_id = data.get('sender')
@@ -113,6 +153,20 @@ class EmployeeChat(AsyncWebsocketConsumer):
         media_files = data.get('file', [])
         replied_to = data.get('replied_to')
         forwarded_content = data.get('forwarded_content', [])
+        
+        if data.get('type') == "disconnect_request":
+            await self.set_user_offline(sender_id)
+            await self.channel_layer.group_send(
+                'user_broadcast',
+                {
+                    'type':'user_status_update',
+                    'user_id':sender_id,
+                    'status':'offline',
+                    'last_seen':datetime.now().isoformat()
+                }
+            )
+            await self.close()
+            return 
 
         for each_forwarded_content in forwarded_content:
             message_id= str(uuid.uuid4())

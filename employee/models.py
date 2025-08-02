@@ -33,6 +33,10 @@ class TMEmployeeDetail(models.Model):
     Status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Active')
     DateOfBirth = models.DateField()
     Gender = models.CharField(max_length=10, choices=GENDER_CHOICES)
+    # new field 01-08-2025
+    is_online = models.BooleanField(default=False)
+    last_seen=models.DateTimeField(null=True, blank=True)
+    # --------
     Address = models.TextField()
     WorkLocation = models.CharField(max_length=255)
     CreatedOn = models.DateTimeField(auto_now_add=True)
