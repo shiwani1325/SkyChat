@@ -170,6 +170,17 @@ class EmployeeChat(AsyncWebsocketConsumer):
             print(f"user status update error :{e}")
 
 
+    async def typing_status(self, event):
+        try:
+            await self.send(text_data=json.dumps({
+                'type':'typing_status',
+                'user_id':event['user_id'],
+                'status':event['status']
+            }))
+        except Exception as e:
+            print(f"user status typing error :{e}")
+
+
     async def receive(self, text_data=None, bytes_data=None):
         data = json.loads(text_data)
         sender_id = data.get('sender')
@@ -179,6 +190,25 @@ class EmployeeChat(AsyncWebsocketConsumer):
         media_files = data.get('file', [])
         replied_to = data.get('replied_to')
         forwarded_content = data.get('forwarded_content', [])
+
+        if data.get('type') == 'user_typing':
+            await self.channel_layer.group_send(
+                self.emp_room_group_name,{
+                    'type':'typing_status',
+                    'user_id':sender_id,
+                    'status':'typing...'
+                }
+            )
+        elif data.get('type') == 'user_online':
+            await self.channel_layer.group_send(
+                self.emp_room_group_name,
+                {
+                    'type':'typing_status',
+                    'user_id':sender_id,
+                    'status':'online'
+                }
+            )
+
         
         if data.get('type') == "disconnect_request":
             self.manually_disconnected=True
