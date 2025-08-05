@@ -379,3 +379,16 @@ class EmployeeChat(AsyncWebsocketConsumer):
             }
         except Exception as e:
             return {"error": str(e)}
+
+
+    # deleted message on socket
+
+    async def message_delete(self, event):
+        await self.send(text_data=json.dumps({
+            "type":"message_delete",
+            "message_id":event['message_id'],
+            "delete_type":event['delete_type'],
+            "sender_id":event['sender_id'],
+            "receiver_id":event['receiver_id']
+        }))
+    

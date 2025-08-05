@@ -15,7 +15,8 @@ from django.db import transaction
 from django.db.models import JSONField
 from django.utils import timezone
 from .models import EmployeeChat, message_backup
-
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
 
 
 class chathistory(APIView):
@@ -239,6 +240,20 @@ class chathistory(APIView):
 
         return message 
 
+
+    def broadcast_message_delete_event(self, chat_id, message_id, delete_type, sender_id, receiver_id):
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f"emp_room_{chat_id}",{
+                'type':'message_delete',
+                'message_id':message_id,
+                'delete_type':delete_type,
+                'sender_id':sender_id,
+                'receiver_id':receiver_id
+            }
+        )
+
+
     def delete(self, request):
         keys = self.load_key()
         # Accept either message_ids or file_uuids as the key
@@ -302,6 +317,14 @@ class chathistory(APIView):
                                 value=json_backup
                             )
                             deleted_messages.append(message_to_delete)
+
+                            self.broadcast_message_delete_event(
+                                chat_id=f'{min(sender_id, receiver_id)}_{max(sender_id,receiver_id)}',
+                                message_id = message_to_delete['message_id'],
+                                delete_type=delete_event,
+                                sender_id = sender_id,
+                                receiver_id = receiver_id
+                            )
 
                         for msg in chat.messages:
                             if msg.get("message_id") in message_ids:
