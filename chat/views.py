@@ -17,6 +17,7 @@ from django.utils import timezone
 from .models import EmployeeChat, message_backup
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
+from employee.models import TMEmployeeDetail
 
 
 class chathistory(APIView):
@@ -45,6 +46,9 @@ class chathistory(APIView):
         keys = self.load_key()
         sender_id  = request.query_params.get("sender_id")
         receiver_id = request.query_params.get("receiver_id")
+
+        receiver_data = TMEmployeeDetail.objects.get(id=receiver_id)
+        receiver_last_seen = receiver_data.last_seen
 
         page = int(request.query_params.get("page", 1))
         page_size = int(request.query_params.get("page_size", 10))
@@ -164,6 +168,7 @@ class chathistory(APIView):
         return Response({
             "status": "success",
             "data": paged_data,
+            "receiver_last_seen":receiver_last_seen,
             "pagination": {
                 "total_items": total_items,
                 "total_pages": total_pages,
@@ -454,3 +459,10 @@ class chathistory(APIView):
                 {"status": "Error", "message": str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+
+
+# class AudioVideoSendView(APIView):
+#     def post(self, request):
+
+
