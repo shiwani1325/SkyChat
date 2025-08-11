@@ -119,6 +119,7 @@ class chathistory(APIView):
                     reply_id = replied_to.get("message_id")
                     if reply_id and reply_id in all_msg_index:
                         original = all_msg_index[reply_id]
+                        # print(f"original:{original}")
                         reply_data = {
                             "message_id": original.get("message_id"),
                             "sender": original.get("sender"),
@@ -127,7 +128,13 @@ class chathistory(APIView):
                             "receiver_name": original.get("receiver_name"),
                             "content": decrypt_content(original.get("content")),
                             "timestamp": original.get("timestamp"),
-                            "file": original.get("file", [])
+                            "file": original.get("file",[]) or replied_to.get("file") or []
+                        }
+                    else:
+                        # fallback if no match in index
+                        reply_data = {
+                            "message_id": replied_to.get("message_id"),
+                            "file": replied_to.get("file") or []
                         }
 
                 # Build message structure

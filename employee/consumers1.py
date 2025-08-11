@@ -40,8 +40,6 @@ class EmployeeList1(AsyncWebsocketConsumer):
         try:
             employee = await self.get_employee(employee_mail)
             org_id, emp_id=employee['org_id'], employee['emp_id']
-            # print(f"org_id:{org_id}")
-            # print(f"empid in receive:{emp_id}")
             unread_count = await sync_to_async(self.get_unread_notifications_count)(emp_id)
             unread_map = unread_count.get("unread_per_sender", {}) if unread_count else {}
 
@@ -85,10 +83,6 @@ class EmployeeList1(AsyncWebsocketConsumer):
 
 
     async def employee_list(self, org_id, receiver_emp_id, unread_map):
-        """
-        Build the employee list and sort it so that
-        the employee with the most‑recent message appears first.
-        """
         org_employee_list = await sync_to_async(list)(
             User.objects.select_related('role').filter(org_id=org_id)
         )
@@ -105,6 +99,12 @@ class EmployeeList1(AsyncWebsocketConsumer):
                 continue
 
             emp_details = await self.get_employee_details(emp_id)
+            # me_user = emp_details['UserEmail']
+            # if self.employee_email == me_user:
+            #     emp_name = emp_details['EmployeeName']+" "+ "(Me)"
+            
+            # else:
+            #     emp_name = None
             emp_details["unread_count_from_sender"] = unread_map.get(str(emp_id), 0)
 
             # fetch latest message and attach a sortable timestamp
@@ -116,10 +116,12 @@ class EmployeeList1(AsyncWebsocketConsumer):
                     latest_ts = latest_msg.get("timestamp", "")
             except Exception as e:
                 print(f"Error fetching latest message for emp_id {emp_id}: {e}")
-
+            
+            # emp_details['emp_name'] = emp_name
             emp_details["latest_message"] = latest_msg
             emp_details["_latest_ts"]     = latest_ts  # helper field for sorting
             rows.append(emp_details)
+            # print(f"rows:{rows}")
 
         # -------- sort: newest timestamp first -----------
         rows.sort(key=lambda r: r["_latest_ts"], reverse=True)
@@ -142,10 +144,6 @@ class EmployeeList1(AsyncWebsocketConsumer):
         
     @database_sync_to_async
     def get_latest_message(self, emp_id, receiver_emp_id):
-        """
-        Returns the newest single message between the two employees,
-        with the 'content' field already decrypted (or 'Deleted Message').
-        """
         try:
             # ▸ 1. fetch the chat object that contains the most‑recent timestamp
             chat = (
@@ -192,6 +190,7 @@ class EmployeeList1(AsyncWebsocketConsumer):
                 "receiver_name": latest_msg.get("receiver_name"),
                 "timestamp":     latest_msg.get("timestamp"),
                 "content":       latest_msg.get("content"),
+                "file":          latest_msg.get("file",[]),
                 "read":          latest_msg.get("read", False),
             }
 

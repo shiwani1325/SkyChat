@@ -344,7 +344,15 @@ class EmployeeChat(AsyncWebsocketConsumer):
         }
 
         if message_type == 'reply':
+            # message['replied_to'] = replied_to
+            if 'file' in replied_to and replied_to['file']:
+                formatted_file=[]
+                for file_f in replied_to['file']:
+                    formatted_file.append({'file_url':file_f.strip()})
+                replied_to['file']=formatted_file
             message['replied_to'] = replied_to
+
+
         elif message_type == 'forward':
             message['forwarded_content'] = forwarded_content
 
