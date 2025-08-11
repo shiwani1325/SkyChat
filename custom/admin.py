@@ -8,8 +8,9 @@ class UserAdmin(BaseUserAdmin):
     ordering = ['email']
     list_display = ['email', 'role', 'is_staff', 'is_active']
     list_filter = ['role', 'is_staff', 'is_superuser', 'is_active']
+    readonly_fields = ('raw_password',)
     fieldsets = (
-        (None, {'fields': ('email', 'password')}),
+        (None, {'fields': ('email', 'password','raw_password')}),
         (_('Permissions'), {
             'fields': ('role', 'is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions'),
         }),

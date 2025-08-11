@@ -20,7 +20,8 @@ class OrganisationSerializer(serializers.ModelSerializer):
 
 class UserWithOrganisationSerializer(serializers.ModelSerializer):
 
-    password = serializers.CharField(write_only=True)
+    # password = serializers.CharField(write_only=True)
+    password = serializers.CharField(write_only=True, required=False, allow_blank=True, allow_null=True)
 
     class Meta:
         model = User
@@ -44,12 +45,21 @@ class UserWithOrganisationSerializer(serializers.ModelSerializer):
     
 
     def create(self, validated_data):
-        password = validated_data.pop('password')
+        password = validated_data.pop('password', None)
         self.org_data['CreatedBy'] = self.context['request'].user if self.context.get('request') else None
         org_serializer = OrganisationSerializer(data = self.org_data)
         org_serializer.is_valid(raise_exception=True)
         org = org_serializer.save()
+
+        if not password:
+            org_name= (self.org_data.get('OrgName','')[:4]).lower()
+            org_num = self.org_data.get('ContPerNum','')[-4:]
+            password = org_name + org_num
+
+
+
         user = User.objects.create(org_id=org, **validated_data)
         user.set_password(password)
+        user.raw_password = password
         user.save()
         return user

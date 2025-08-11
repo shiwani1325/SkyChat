@@ -250,21 +250,21 @@ class EmployeeChat(AsyncWebsocketConsumer):
         sender_obj, sender_name = await self.get_employee_and_name(sender_id)
         message_id = str(uuid.uuid4())
 
-        preview_message = {
-            'type': 'chat_message',
-            'sender': sender_id,
-            'receiver': receiver_ids[0] if receiver_ids else "",
-            'sender_name': sender_name,
-            'receiver_name': '',
-            'content': message_content,
-            'file': media_files,
-            'message_id': message_id,
-            'status': 'sending',
-            'Activity': 'Sending...',
-            'timestamp': datetime.now().isoformat(),    
-            'message_type': message_type
-        }
-        await self.send(text_data=json.dumps(preview_message, ensure_ascii=False))
+        # preview_message = {
+        #     'type': 'chat_message',
+        #     'sender_id': sender_id,
+        #     'receiver_id': receiver_ids[0] if receiver_ids else "",
+        #     'sender_name': sender_name,
+        #     'receiver_name': '',
+        #     'content': message_content,
+        #     'file': media_files,
+        #     'message_id': message_id,
+        #     'status': 'sending',
+        #     'Activity': 'Sending...',
+        #     'timestamp': datetime.now().isoformat(),    
+        #     'message_type': message_type
+        # }
+        # await self.send(text_data=json.dumps(preview_message, ensure_ascii=False))
 
 # changes done here for status part before sent passing static   24-07-2025
 

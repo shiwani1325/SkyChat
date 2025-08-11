@@ -47,7 +47,7 @@ class CreateEmployeeWithUserView(APIView):
     permission_classes = [IsOrganisation]
     parser_classes = [MultiPartParser, FormParser]
     def post(self, request):
-        print(f"request dat a:{request.data}")
+        # print(f"request dat a:{request.data}")
         serializer = UserWithEmployeeSerializer(data=request.data)
         # print(f"serializer:{serializer}")
         if serializer.is_valid():

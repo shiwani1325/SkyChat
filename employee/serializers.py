@@ -31,7 +31,7 @@ class EmployeeCreateSerializer(serializers.ModelSerializer):
 
 
 class UserWithEmployeeSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True)
+    password = serializers.CharField(write_only=True, required=False, allow_blank=True, allow_null=True)
 
     class Meta:
         model = User
@@ -54,7 +54,7 @@ class UserWithEmployeeSerializer(serializers.ModelSerializer):
         return super().to_internal_value(clean_data)
 
     def create(self, validated_data):
-        password = validated_data.pop('password')
+        password = validated_data.pop('password', None)
 
         # Add CreatedBy user if available
         self.employee_data['CreatedBy'] = self.context['request'].user if self.context.get('request') else None
@@ -63,12 +63,18 @@ class UserWithEmployeeSerializer(serializers.ModelSerializer):
         emp_serializer = EmployeeCreateSerializer(data=self.employee_data)
         emp_serializer.is_valid(raise_exception=True)
         employee = emp_serializer.save()
+        if not password:
+            emp_name = (self.employee_data.get('EmployeeName','')[:4]).lower()
+            emp_num = self.employee_data.get('EmpMobNumber','')[-4:]
+            password = emp_name + emp_num
+
+
 
         # Create User and associate employee
         user = User.objects.create(emp_id=employee, **validated_data)
         user.set_password(password)
+        user.raw_password = password
         user.save()
-
         return user
 
 
