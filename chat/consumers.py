@@ -399,4 +399,17 @@ class EmployeeChat(AsyncWebsocketConsumer):
             "sender_id":event['sender_id'],
             "receiver_id":event['receiver_id']
         }))
-    
+
+
+    async def VideoSharing(self, event):
+        await self.send(text_data = json.dumps({
+            'type':"VideoSharing",
+            "message_id" :event['message_id'],
+            "sender_id":event['sender_id'],
+            "receiver_id":event['receiver_id'],
+            "sender_name":event['sender_name'],
+            "receiver_name":event["receiver_name"],
+            "file":event['file'],
+            "status":"sent"
+        }))
+        

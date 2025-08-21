@@ -11,6 +11,7 @@ urlpatterns = [
     path('api/employee/',include('employee.urls')),
     path('api/org/',include('org.urls')),
     path('api/dept/',include('dept.urls')),
+    path('api/group/',include('groupchat.urls')),
 ]
 if settings.DEBUG:
   urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -1,0 +1,67 @@
+from django.shortcuts import render
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework.permissions import AllowAny
+from django.conf import settings
+from .models import EmployeeGroup, EmployeeGroupChat
+from .serializers import EmployeeGroupSerializers, EmployeeGroupSerializersDetails
+from org.models import TMOrganisationDetail
+from custom.models import User
+from employee.models import TMEmployeeDetail
+from employee.serializers import EmployeeSerializers 
+from .serializers import EmployeeSerializerGroup
+
+class GroupChatRoomView(APIView):
+    permission_classes=[AllowAny]
+
+    def post(self, request):
+        serializer = EmployeeGroupSerializers(data=request.data)
+        if serializer.is_valid():
+            try:
+                user = serializer.save()
+                return Response({'status':"success", "message":"Group is created successfully","data":serializer.data}, status=status.HTTP_201_CREATED)
+            except Exception as e:
+                return Response({'status':"error", "message":str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        return Response({'status':"error", "message":serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+
+    def get(self, request, id=None):
+        try:
+            if not id:
+                data =  EmployeeGroup.objects.all()
+                # serializer = EmployeeGroupSerializers(data, many=True) # EmployeeGroupSerializersDetails
+                serializer = EmployeeGroupSerializersDetails(data, many=True)
+                return Response({'status':"success", "data":serializer.data}, status=status.HTTP_200_OK)
+            else:
+                data=EmployeeGroup.objects.get(id=id)
+                serializer = EmployeeGroupSerializersDetails(data)
+                return Response({'status':"success", "data":serializer.data}, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({'status':"error", "message":str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+class EmployeeListOrgBasedView(APIView):
+    permission_classes =[AllowAny]
+
+    def get(self, request):
+        try:
+            org_id = request.query_params.get('org_id')
+            if not org_id:
+                return Response({'status':"error", "message":"Org id is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+            if not TMOrganisationDetail.objects.filter(id=org_id).exists():
+                return Response({'status':"error", "message":"Organisation not found"}, status=status.HTTP_404_NOT_FOUND)
+
+            data = User.objects.filter(org_id=org_id).exclude(emp_id__isnull=True)
+            emp_ids = [emp.emp_id.id for emp in data]
+            emp_data = TMEmployeeDetail.objects.filter(id__in = emp_ids)
+            print(f"emp_dat:{emp_data}")
+            serializer = EmployeeSerializerGroup(emp_data, many=True)
+
+            return Response({'status':"success", "data":serializer.data}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'status':"error", "message":str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

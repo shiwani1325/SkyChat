@@ -9,6 +9,7 @@ import base64
 from django.conf import settings
 from collections import defaultdict
 from rest_framework.permissions import AllowAny
+from django.core.files.storage import default_storage
 from django.db.models import Q
 from django.db.models import F, Func, Value, JSONField
 from django.db import transaction
@@ -18,6 +19,7 @@ from .models import EmployeeChat, message_backup
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from employee.models import TMEmployeeDetail
+import uuid
 
 
 class chathistory(APIView):
@@ -469,7 +471,57 @@ class chathistory(APIView):
 
 
 
-# class AudioVideoSendView(APIView):
-#     def post(self, request):
+class AudioVideoSendView(APIView):
+    permission_classes = [AllowAny]
 
 
+    def Video_File_Sharing(self, chat_id, message_id, sender_id, receiver_id, sender_name, receiver_name, file):
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f"emp_room_{chat_id}",{
+                'type':"VideoSharing",
+                "message_id":message_id,
+                "sender_id":sender_id, 
+                "receiver_id": receiver_id,
+                "sender_name":sender_name,
+                "receiver_name":receiver_name,
+                "file": file,
+                "status": 'sent'
+            }
+        )
+        
+    def post(self, request):
+
+        sender_id = request.data.get("sender")
+        receiver_id = request.data.get('receiver')
+        sender_name = request.data.get('sender_name')
+        receiver_name = request.data.get('receiver_name')
+
+        file_upload = request.FILES['file']
+        path = default_storage.save(f"chat_videos/{file_upload.name}", file_upload)
+        file_url = request.build_absolute_uri(settings.MEDIA_URL + path.replace("chat_uploads/","chat_uploads/"))
+
+        # save file url in db
+        chat, chat_msg = EmployeeChat.objects.get_or_create(sender_id=sender_id, receiver_id=receiver_id)
+        message_id = str(uuid.uuid4())
+        chat.add_message(
+            message_type="VideoSharing",
+            message_id = message_id,
+            sender_id = sender_id, 
+            receiver_id = receiver_id,
+            sender_name = sender_name,
+            receiver_name = receiver_name,
+            file = file_url,
+            status = 'sent'
+        )
+        
+        self.Video_File_Sharing(
+            chat_id=f'{min(sender_id, receiver_id)}_{max(sender_id,receiver_id)}',
+            message_id = message_id,
+            sender_id = sender_id, 
+            receiver_id = receiver_id,
+            sender_name = sender_name,
+            receiver_name = receiver_name,
+            file = file_url
+        )
+        return Response({'status':"success","message_id":message_id, "file_url":file_url, "message_type":"video", "status":"sent"},status=201)
