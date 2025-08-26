@@ -5,12 +5,12 @@ from rest_framework import status
 from rest_framework.permissions import AllowAny
 from django.conf import settings
 from .models import EmployeeGroup, EmployeeGroupChat
-from .serializers import EmployeeGroupSerializers, EmployeeGroupSerializersDetails
+from .serializers import EmployeeGroupSerializers, EmployeeGroupSerializersDetails, EmployeeListSerializerGroup
 from org.models import TMOrganisationDetail
 from custom.models import User
 from employee.models import TMEmployeeDetail
 from employee.serializers import EmployeeSerializers 
-from .serializers import EmployeeSerializerGroup
+# from .serializers import EmployeeSerializerGroup
 
 class GroupChatRoomView(APIView):
     permission_classes=[AllowAny]
@@ -58,9 +58,8 @@ class EmployeeListOrgBasedView(APIView):
 
             data = User.objects.filter(org_id=org_id).exclude(emp_id__isnull=True)
             emp_ids = [emp.emp_id.id for emp in data]
-            emp_data = TMEmployeeDetail.objects.filter(id__in = emp_ids)
-            print(f"emp_dat:{emp_data}")
-            serializer = EmployeeSerializerGroup(emp_data, many=True)
+            emp_data = TMEmployeeDetail.objects.filter(id__in = emp_ids, Status='Active')
+            serializer = EmployeeListSerializerGroup(emp_data, many=True)
 
             return Response({'status':"success", "data":serializer.data}, status=status.HTTP_200_OK)
         except Exception as e:

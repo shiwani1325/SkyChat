@@ -9,6 +9,7 @@ from .serializers import EmployeeSerializers
 from collections import defaultdict
 from custom.models import User
 from custom.serializers import UserSerializer
+from groupchat.models import EmployeeGroup
 import asyncio
 import os
 import uuid
@@ -19,6 +20,7 @@ from django.db.models import Q
 from datetime import datetime
 
 
+# receiver_emp_id = login user id
 class EmployeeList1(AsyncWebsocketConsumer):
     async def connect(self):
         # self.employee_mail = self.scope['url_route']['kwargs']['employee_mail']
@@ -40,6 +42,7 @@ class EmployeeList1(AsyncWebsocketConsumer):
         try:
             employee = await self.get_employee(employee_mail)
             org_id, emp_id=employee['org_id'], employee['emp_id']
+            # print(f"org_id:{org_id} & emp_id :{emp_id}")
             unread_count = await sync_to_async(self.get_unread_notifications_count)(emp_id)
             unread_map = unread_count.get("unread_per_sender", {}) if unread_count else {}
 
@@ -67,6 +70,7 @@ class EmployeeList1(AsyncWebsocketConsumer):
             try:
                 if hasattr(self, "employee_email"):
                     employee = await self.get_employee(self.employee_email)
+                    # print(f"employee in periodic update:{employee}")
                     org_id, emp_id = employee["org_id"], employee["emp_id"]
                     unread_count = await sync_to_async(self.get_unread_notifications_count)(emp_id)
                     unread_map = unread_count.get("unread_per_sender", {}) if unread_count else {}
@@ -83,14 +87,13 @@ class EmployeeList1(AsyncWebsocketConsumer):
 
 
     async def employee_list(self, org_id, receiver_emp_id, unread_map):
+        rows = []
+
+        # This code is for employee room list ---------------------     Employee---------------------------------------
         org_employee_list = await sync_to_async(list)(
             User.objects.select_related('role').filter(org_id=org_id)
         )
         serializer = UserSerializer(org_employee_list, many=True)
-        # print(f"serializers data :{serializer}")
-        rows = []
-        # print(f"after rows")
-
         for item in serializer.data:
             # print(f"for loop")
             emp_id = item.get("emp_id")
@@ -99,6 +102,7 @@ class EmployeeList1(AsyncWebsocketConsumer):
                 continue
 
             emp_details = await self.get_employee_details(emp_id)
+            # print(f"emp_details:{emp_details}")
             # me_user = emp_details['UserEmail']
             # if self.employee_email == me_user:
             #     emp_name = emp_details['EmployeeName']+" "+ "(Me)"
@@ -109,7 +113,8 @@ class EmployeeList1(AsyncWebsocketConsumer):
 
             # fetch latest message and attach a sortable timestamp
             latest_msg = None
-            latest_ts  = ""  # empty string sorts after real timestamps
+            # latest_ts  = ""  # empty string sorts after real timestamps
+            latest_ts = str(emp_details.get('CreatedOn',''))
             try:
                 latest_msg = await self.get_latest_message(emp_id, receiver_emp_id)
                 if latest_msg:
@@ -123,23 +128,52 @@ class EmployeeList1(AsyncWebsocketConsumer):
             rows.append(emp_details)
             # print(f"rows:{rows}")
 
+
+        # For Group Chat Room -----------------------------------------------------   Group ---------------------------------------------------
+        group_list = await sync_to_async(list)(
+            EmployeeGroup.objects.filter(members__id=receiver_emp_id)
+        )
+        # group_latest_message=None
+        for group in group_list: 
+            # if not group_latest_message:
+            _latest_ts = group.created_on.isoformat()
+
+            group_data = {
+                "id":group.id,
+                "type":"Group",
+                "GroupName":group.groupname,
+                "Description":group.description,
+                "created_on":group.created_on.isoformat(),
+                "latest_message":None,
+                "_latest_ts":_latest_ts
+
+            }
+            # print(f"group data:{group_data}")
+            rows.append(group_data)
+            
+
         # -------- sort: newest timestamp first -----------
+        # print(f"rows all data :{rows}")
         rows.sort(key=lambda r: r["_latest_ts"], reverse=True)
 
         # remove helper field before returning
         for r in rows:
+            # print(f"r :{r}")
             r.pop("_latest_ts", None)
 
         return rows
 
+
     @database_sync_to_async
     def get_employee(self, employee_mail):
         data = User.objects.get(email=employee_mail)
+        # print(f"data :{data}")
         return UserSerializer(data).data
 
     @database_sync_to_async
     def get_employee_details(self, emp_id):
         emp_data = TMEmployeeDetail.objects.get(id=emp_id)
+        # print(f"emp_data:{emp_data}")
         return EmployeeSerializers(emp_data).data
         
     @database_sync_to_async

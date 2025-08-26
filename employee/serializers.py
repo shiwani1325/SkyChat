@@ -13,7 +13,7 @@ class EmployeeSerializers(serializers.ModelSerializer):
 
     class Meta:
         model = TMEmployeeDetail
-        exclude = ['CreatedOn', 'UpdatedOn', 'CreatedBy', 'UpdatedBy', 'DepartmentId', 'DesignationId']
+        exclude = ['UpdatedOn', 'CreatedBy', 'UpdatedBy', 'DepartmentId', 'DesignationId']
 
     def get_ProfileImage(self, obj):
         return obj.ProfileImage.url if obj.ProfileImage else None
