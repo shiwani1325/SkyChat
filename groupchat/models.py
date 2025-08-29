@@ -2,6 +2,7 @@ from django.db import models
 from django.conf import settings
 from employee.models import TMEmployeeDetail
 from django.utils import timezone
+from employee.models import TMEmployeeDetail
 
 
 User = settings.AUTH_USER_MODEL
@@ -13,15 +14,28 @@ class EmployeeGroup(models.Model):
     created_on = models.DateTimeField(auto_now_add=True, null=True, blank=True)
     updated_on = models.DateTimeField(auto_now=True, null=True, blank=True)
 
+    class Meta:
+        db_table = 'EmployeeGroup'
+
+    def __str__(self):
+        return f"{self.groupname} and {self.description}" 
+
+
 class EmployeeGroupMember(models.Model):
     group = models.ForeignKey(EmployeeGroup, on_delete=models.CASCADE, related_name="memberships", null=True, blank=True)
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True)
+    user = models.ForeignKey(TMEmployeeDetail, on_delete=models.SET_NULL, null=True, blank=True)
     joined_at = models.DateTimeField(default=timezone.now, null=True, blank=True)
     is_admin = models.BooleanField(default=False, null=True, blank=True)
 
+    class Meta:
+        db_table = "EmployeeGroupMember"
+
+    def __str__(self):
+        return f"{self.group.groupname} and {self.user}"
+
 class EmployeeGroupChat(models.Model):
     group = models.ForeignKey(EmployeeGroup, on_delete=models.CASCADE, related_name="messages", null=True, blank=True)
-    sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True)
+    sender = models.ForeignKey(TMEmployeeDetail, on_delete=models.CASCADE, null=True, blank=True)
     message_type = models.CharField(max_length=20, choices=[
         ('text','text'),
         ('image','image'),
@@ -39,7 +53,7 @@ class EmployeeGroupChat(models.Model):
 
 class MessageStatus(models.Model):
     message = models.ForeignKey(EmployeeGroupChat, on_delete=models.CASCADE, related_name="statuses")
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    user = models.ForeignKey(TMEmployeeDetail, on_delete=models.CASCADE, null=True, blank=True)
     delivered = models.BooleanField(default=False)
     delivered_at = models.DateTimeField(null=True, blank=True)
     read = models.BooleanField(default=False)

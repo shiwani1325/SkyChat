@@ -9,7 +9,8 @@ from .serializers import EmployeeSerializers
 from collections import defaultdict
 from custom.models import User
 from custom.serializers import UserSerializer
-from groupchat.models import EmployeeGroup
+from groupchat.models import EmployeeGroup, EmployeeGroupChat
+from groupchat.serializers import EmployeeGroupChatSerializer
 import asyncio
 import os
 import uuid
@@ -55,7 +56,7 @@ class EmployeeList1(AsyncWebsocketConsumer):
             await self.send(text_data=json.dumps({
                 "notification_data":unread_count,
                 "emp_data":emp_data,
-            }))
+            }, ensure_ascii=False))
             
             
         except User.DoesNotExist:
@@ -79,7 +80,7 @@ class EmployeeList1(AsyncWebsocketConsumer):
                     await self.send(text_data=json.dumps({
                         "notification_data": unread_count,
                         "emp_data": emp_data,
-                    }))
+                    }, ensure_ascii=False))
             except Exception as e:
                 print(f"[Error] periodic_update: {e}")
 
@@ -131,21 +132,35 @@ class EmployeeList1(AsyncWebsocketConsumer):
 
         # For Group Chat Room -----------------------------------------------------   Group ---------------------------------------------------
         group_list = await sync_to_async(list)(
-            EmployeeGroup.objects.filter(members__id=receiver_emp_id)
+            EmployeeGroup.objects.filter(memberships__user__id=receiver_emp_id)
         )
+        # print(f"group_list:{group_list}")
         # group_latest_message=None
         for group in group_list: 
+            latest_msg=None
+
             # if not group_latest_message:
-            _latest_ts = group.created_on.isoformat()
+            # print(f"group:{group.id}")
+            latest_ts = group.created_on.isoformat()
+            # print(f"_latest_ts:{latest_ts}")
+            try:
+                latest_msg = await self.get_latest_message_group(emp_id, group)
+                # print(f"latest message after latest message griup completed :{latest_msg}")
+                if latest_msg:
+                    latest_ts = latest_msg.get("timestamp",group.created_on.isoformat())
+                    # print(f"latest_ts:{latest_ts}")
+            except Exception as e:
+                print(f"Error fetching latest message for emp_id {emp_id}: {e}")
+
 
             group_data = {
                 "id":group.id,
                 "type":"Group",
                 "GroupName":group.groupname,
                 "Description":group.description,
-                "created_on":group.created_on.isoformat(),
-                "latest_message":None,
-                "_latest_ts":_latest_ts
+                # "created_on":group.created_on.isoformat(),
+                "latest_message":latest_msg if latest_msg else None,
+                "_latest_ts":latest_ts
 
             }
             # print(f"group data:{group_data}")
@@ -208,13 +223,17 @@ class EmployeeList1(AsyncWebsocketConsumer):
                 for key in self.load_key():
                     try:
                         trial = self.decrypt_message(ciphertext, key)
+                        # print(f"trial in one to one chat:{trial}")
                         if trial is not None:
                             plaintext = trial
+                            # print(f"plain text in one to one chat :{plaintext}")
                             break
                     except Exception:
                         continue  # try next key
 
             latest_msg["content"] = plaintext
+
+            
 
             # ▸ 4. return the reduced dict expected by your frontend
             return {
@@ -231,6 +250,50 @@ class EmployeeList1(AsyncWebsocketConsumer):
         except Exception as e:
             # print(f"Error inside get_latest_message: {e}")
             return None
+
+    @database_sync_to_async
+    def get_latest_message_group(self, emp_id, group):
+        latest_group_chat = EmployeeGroupChat.objects.filter(group=group).order_by("-timestamp").first()
+        # print(f"groupchat:{latest_group_chat}")
+        if not latest_group_chat:
+            return None
+        serializer = EmployeeGroupChatSerializer(latest_group_chat)
+        chat_data = dict(serializer.data)
+        # print(f"chat_data:{chat_data}")
+        # print(f"serializer chat data:{serializer.data}")
+        ciphertext = chat_data['content']
+        plaintext = ciphertext
+        # print(f"ciphertext:{ciphertext}")
+        # print(f"plain text : {plaintext}")
+        for key in self.load_key():
+            try:
+                trial = self.decrypt_message(ciphertext, key)
+                # print(f"trial :{trial}")
+                if trial is not None:
+                    plaintext=trial
+                    # print(f"text in trial not None;{plaintext}")
+                    break
+            except Exception:
+                continue
+        chat_data['content']=plaintext
+        # print(f"serilaizer updated text:{chat_data['content']}")
+        
+        return {
+            "sender": chat_data['sender'] ,
+            "group_id":chat_data['group'] ,
+            "timestamp":     chat_data['timestamp'],
+            "content": chat_data['content'], 
+            # "file":          serializer.data['file', None],
+            "read":          None
+
+        }
+
+        # print(f"serializer message :{serializer.data['content']}")
+        # return 
+
+        
+
+
 
 
 
@@ -314,6 +377,7 @@ class EmployeeList1(AsyncWebsocketConsumer):
         from cryptography.fernet import Fernet
         try:
             fernet = Fernet(encryption_key)
+            # print(f"fernet :{fernet}")
             return fernet.decrypt(encrypted_content.encode()).decode()
         except:
             return None
