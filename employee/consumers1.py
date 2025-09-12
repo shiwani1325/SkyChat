@@ -131,40 +131,40 @@ class EmployeeList1(AsyncWebsocketConsumer):
 
 
         # For Group Chat Room -----------------------------------------------------   Group ---------------------------------------------------
-        group_list = await sync_to_async(list)(
-            EmployeeGroup.objects.filter(memberships__user__id=receiver_emp_id)
-        )
-        # print(f"group_list:{group_list}")
-        # group_latest_message=None
-        for group in group_list: 
-            latest_msg=None
+        # group_list = await sync_to_async(list)(
+        #     EmployeeGroup.objects.filter(memberships__user__id=receiver_emp_id)
+        # )
+        # # print(f"group_list:{group_list}")
+        # # group_latest_message=None
+        # for group in group_list: 
+        #     latest_msg=None
 
-            # if not group_latest_message:
-            # print(f"group:{group.id}")
-            latest_ts = group.created_on.isoformat()
-            # print(f"_latest_ts:{latest_ts}")
-            try:
-                latest_msg = await self.get_latest_message_group(emp_id, group)
-                # print(f"latest message after latest message griup completed :{latest_msg}")
-                if latest_msg:
-                    latest_ts = latest_msg.get("timestamp",group.created_on.isoformat())
-                    # print(f"latest_ts:{latest_ts}")
-            except Exception as e:
-                print(f"Error fetching latest message for emp_id {emp_id}: {e}")
+        #     # if not group_latest_message:
+        #     # print(f"group:{group.id}")
+        #     latest_ts = group.created_on.isoformat()
+        #     # print(f"_latest_ts:{latest_ts}")
+        #     try:
+        #         latest_msg = await self.get_latest_message_group(emp_id, group)
+        #         # print(f"latest message after latest message griup completed :{latest_msg}")
+        #         if latest_msg:
+        #             latest_ts = latest_msg.get("timestamp",group.created_on.isoformat())
+        #             # print(f"latest_ts:{latest_ts}")
+        #     except Exception as e:
+        #         print(f"Error fetching latest message for emp_id {emp_id}: {e}")
 
 
-            group_data = {
-                "id":group.id,
-                "type":"Group",
-                "GroupName":group.groupname,
-                "Description":group.description,
-                # "created_on":group.created_on.isoformat(),
-                "latest_message":latest_msg if latest_msg else None,
-                "_latest_ts":latest_ts
+        #     group_data = {
+        #         "id":group.id,
+        #         "type":"Group",
+        #         "GroupName":group.groupname,
+        #         "Description":group.description,
+        #         # "created_on":group.created_on.isoformat(),
+        #         "latest_message":latest_msg if latest_msg else None,
+        #         "_latest_ts":latest_ts
 
-            }
-            # print(f"group data:{group_data}")
-            rows.append(group_data)
+        #     }
+        #     # print(f"group data:{group_data}")
+        #     rows.append(group_data)
             
 
         # -------- sort: newest timestamp first -----------
