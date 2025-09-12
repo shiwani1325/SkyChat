@@ -129,7 +129,7 @@ class GroupChatConsumer(AsyncWebsocketConsumer):
                 user=m.user,
                 delivered=True if str(m.user.id) != str(sender_id) else True,
                 delivered_at=datetime.now(),
-                read=(str(m.user.id) == str(sender_id)),  # sender auto-reads
+                read=(str(m.user.id) == str(sender_id)),  #sender auto-reads
                 read_at=datetime.now() if str(m.user.id) == str(sender_id) else None,
             )
             print(f"Message after save ")
