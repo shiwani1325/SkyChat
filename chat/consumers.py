@@ -409,7 +409,9 @@ class EmployeeChat(AsyncWebsocketConsumer):
             "receiver_id":event['receiver_id'],
             "sender_name":event['sender_name'],
             "receiver_name":event["receiver_name"],
+            "content":event["content"],
             "file":event['file'],
-            "status":"sent"
+            "status":"sent",
+            "timestamp": datetime.now().isoformat()
         }))
         

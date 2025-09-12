@@ -15,6 +15,7 @@ from django.db.models import F, Func, Value, JSONField
 from django.db import transaction
 from django.db.models import JSONField
 from django.utils import timezone
+from datetime import datetime
 from .models import EmployeeChat, message_backup
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
@@ -475,7 +476,7 @@ class AudioVideoSendView(APIView):
     permission_classes = [AllowAny]
 
 
-    def Video_File_Sharing(self, chat_id, message_id, sender_id, receiver_id, sender_name, receiver_name, file):
+    def Video_File_Sharing(self, chat_id, message_id, sender_id, receiver_id, sender_name, receiver_name,content, file):
         channel_layer = get_channel_layer()
         async_to_sync(channel_layer.group_send)(
             f"emp_room_{chat_id}",{
@@ -485,6 +486,7 @@ class AudioVideoSendView(APIView):
                 "receiver_id": receiver_id,
                 "sender_name":sender_name,
                 "receiver_name":receiver_name,
+                "content":content,
                 "file": file,
                 "status": 'sent'
             }
@@ -496,10 +498,24 @@ class AudioVideoSendView(APIView):
         receiver_id = request.data.get('receiver')
         sender_name = request.data.get('sender_name')
         receiver_name = request.data.get('receiver_name')
+        content = request.data.get('content')
 
         file_upload = request.FILES['file']
         path = default_storage.save(f"chat_videos/{file_upload.name}", file_upload)
-        file_url = request.build_absolute_uri(settings.MEDIA_URL + path.replace("chat_uploads/","chat_uploads/"))
+        print(f"path:{path}")
+        # file_url = request.build_absolute_uri(settings.MEDIA_URL + path.replace("chat_uploads/","chat_uploads/"))
+        # print(f"file url:{file_url}")
+
+        message_id = str(uuid.uuid4())
+        file_uuid = str(uuid.uuid4())
+        timestamp = datetime.now().isoformat()
+
+        file_data = [{
+            "file_url": f"mediafiles/chat_videos/{file_upload.name}",
+            "file_name": file_upload.name,
+            "file_uuid": file_uuid,
+            "timestamp": timestamp
+        }]
 
         # save file url in db
         chat, chat_msg = EmployeeChat.objects.get_or_create(sender_id=sender_id, receiver_id=receiver_id)
@@ -511,7 +527,8 @@ class AudioVideoSendView(APIView):
             receiver_id = receiver_id,
             sender_name = sender_name,
             receiver_name = receiver_name,
-            file = file_url,
+            content = content if content else None,
+            file = file_data,
             status = 'sent'
         )
         
@@ -522,6 +539,20 @@ class AudioVideoSendView(APIView):
             receiver_id = receiver_id,
             sender_name = sender_name,
             receiver_name = receiver_name,
-            file = file_url
+            content=content,
+            file = file_data
+
         )
-        return Response({'status':"success","message_id":message_id, "file_url":file_url, "message_type":"video", "status":"sent"},status=201)
+        return Response({'status':"success","sender_id": sender_id,
+            "receiver_id": receiver_id,
+            "sender_name": sender_name,
+            "receiver_name": receiver_name,
+            "content":content,
+            "file": file_data,
+            "read": False,
+            "message_id": message_id,
+            "status": "sent",
+            "message_type": "VideoSharing",
+            "type": "chat_message",
+            "timestamp": timestamp,
+            "Activity": "Online"},status=201)

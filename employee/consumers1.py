@@ -284,7 +284,7 @@ class EmployeeList1(AsyncWebsocketConsumer):
             "timestamp":     chat_data['timestamp'],
             "content": chat_data['content'], 
             # "file":          serializer.data['file', None],
-            "read":          None
+            "read": False
 
         }
 
