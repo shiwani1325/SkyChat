@@ -73,7 +73,13 @@ CHANNEL_LAYERS = {
 
 
 CORS_ALLOW_ALL_ORIGINS = True
-
+CSRF_TRUSTED_ORIGINS = [
+    "http://143.110.242.217",
+    "https://143.110.242.217",
+    "http://103.190.95.89",
+    "https://103.190.95.89",
+    "http://127.0.0.1/"
+]
 AUTH_USER_MODEL = 'custom.User'
 
 
@@ -93,6 +99,34 @@ DATABASES = {
 #         'NAME': BASE_DIR / 'shiwani.sqlite3',
 #     }
 # }
+
+
+
+# This db only for shiwanichat
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',   # PostgreSQL backend
+#         'NAME': 'shiwanichat',                      # database name
+#         'USER': 'postgres',                      # database user
+#         'PASSWORD': 'postadmin',              # user password
+#         'HOST': '103.89.44.59',                         # or your server IP / domain
+#         'PORT': '5432',                              # default PostgreSQL port
+#     }
+# }
+
+
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',   # PostgreSQL backend
+#         'NAME': 'swadb',                      # database name
+#         'USER': 'postgres',                      # database user
+#         'PASSWORD': 'postadmin',              # user password
+#         'HOST': '103.89.44.59',                         # or your server IP / domain
+#         'PORT': '5432',                              # default PostgreSQL port
+#     }
+# }
+
+
 
 # DATABASES = {
 #     'default': {

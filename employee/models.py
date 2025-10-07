@@ -24,24 +24,24 @@ class TMEmployeeDetail(models.Model):
     ]
 
     EmployeeName = models.CharField(max_length=255)
-    EmployeeId = models.CharField(max_length=50, unique=True)  
-    EmpMobNumber = models.CharField(max_length=20, unique=True)
-    DepartmentId = models.ForeignKey(OrgDepartment, on_delete=models.SET_NULL, null=True)
-    DesignationId = models.ForeignKey(OrgDesignation, on_delete=models.SET_NULL, null=True)
+    EmployeeId = models.CharField(max_length=50, unique=True, null=True, blank=True),  
+    EmpMobNumber = models.CharField(max_length=20, unique=True, null=True, blank=True)
+    DepartmentId = models.ForeignKey(OrgDepartment, on_delete=models.SET_NULL, null=True, blank=True)
+    DesignationId = models.ForeignKey(OrgDesignation, on_delete=models.SET_NULL, null=True, blank=True)
     ProfileImage = models.ImageField(upload_to=profile_image_upload_path, null=True, blank=True)
-    DateOfJoining = models.DateField()
-    Status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Active')
-    DateOfBirth = models.DateField()
-    Gender = models.CharField(max_length=10, choices=GENDER_CHOICES)
+    DateOfJoining = models.DateField(null=True, blank=True)
+    Status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Active', null=True, blank=True)
+    DateOfBirth = models.DateField(null=True, blank=True)
+    Gender = models.CharField(max_length=10, choices=GENDER_CHOICES, null=True, blank=True)
     # new field 01-08-2025
     is_online = models.BooleanField(default=False)
     last_seen=models.DateTimeField(null=True, blank=True)
     # --------
-    Address = models.TextField()
-    WorkLocation = models.CharField(max_length=255)
-    CreatedOn = models.DateTimeField(auto_now_add=True)
+    Address = models.TextField(null=True, blank=True)
+    WorkLocation = models.CharField(max_length=255, null=True, blank=True)
+    CreatedOn = models.DateTimeField(auto_now_add=True, null=True, blank=True)
     CreatedBy = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='emp_created')
-    UpdatedOn = models.DateTimeField(auto_now=True)
+    UpdatedOn = models.DateTimeField(auto_now=True, null=True, blank=True)
     UpdatedBy = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='emp_updated')
 
     class Meta:

@@ -266,7 +266,7 @@ class EmployeeChat(AsyncWebsocketConsumer):
         # }
         # await self.send(text_data=json.dumps(preview_message, ensure_ascii=False))
 
-# changes done here for status part before sent passing static   24-07-2025
+    # changes done here for status part before sent passing static   24-07-2025
 
         async def process_receiver(receiver_id):
             try:
